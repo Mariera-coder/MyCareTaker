@@ -1,0 +1,331 @@
+# MyCareTaker — Database Schema Reference
+
+## Entity-Relationship Overview
+
+```mermaid
+erDiagram
+    User ||--o| OwnerProfile : "has"
+    User ||--o| TenantProfile : "has"
+    User ||--o{ CaretakerEstate : "assigned via"
+    User ||--o{ PaymentAdjustment : "makes"
+    User ||--o{ AuditLog : "generates"
+    User ||--o{ Complaint : "approves (ComplaintApprover)"
+
+    OwnerProfile ||--o{ Estate : "owns"
+
+    Estate ||--o{ Unit : "contains"
+    Estate ||--o{ CaretakerEstate : "managed by"
+    Estate ||--o{ Complaint : "has"
+
+    Unit ||--o| TenantProfile : "occupied by"
+    Unit ||--o{ Payment : "receives"
+    Unit ||--o{ MoveOutRequest : "has"
+
+    TenantProfile ||--o{ Payment : "makes"
+    TenantProfile ||--o{ Complaint : "raises"
+    TenantProfile ||--o{ MoveOutRequest : "submits"
+
+    Payment ||--o{ PaymentAdjustment : "adjusted by"
+```
+
+---
+
+## Tables
+
+### `users`
+The central identity table. Every person in the system is a `User`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | Auto-generated |
+| `email` | String | Unique |
+| `password_hash` | String | bcrypt hash |
+| `first_name` | String | |
+| `last_name` | String | |
+| `phone` | String? | Optional |
+| `role` | `Role` enum | Controls access |
+| `is_active` | Boolean | Soft-disable accounts |
+| `refresh_token_hash` | String? | For JWT refresh |
+| `created_at` / `updated_at` | DateTime | Audit timestamps |
+
+**Role Enum:** `ADMIN` · `OWNER` · `CARETAKER` · `TENANT`
+
+---
+
+### `owner_profiles`
+Extends `User` for property owners. One owner can own many estates.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `user_id` | UUID FK → `users` | Unique (1-to-1) |
+
+---
+
+### `estates`
+A property/compound owned by an owner. Contains multiple units.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `name` | String | Estate name |
+| `address` | String | Street address |
+| `city` | String | |
+| `owner_id` | UUID FK → `owner_profiles` | Cascade delete |
+
+---
+
+### `caretaker_estates` *(junction table)*
+Many-to-many link between caretakers (`users`) and estates. A caretaker can manage more than one estate; an estate can have more than one caretaker.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `user_id` | UUID FK → `users` | |
+| `estate_id` | UUID FK → `estates` | |
+| `assigned_at` | DateTime | When assignment was made |
+
+> **Unique constraint:** `(user_id, estate_id)` — no duplicate assignments.
+
+---
+
+### `units`
+An individual rentable unit within an estate (e.g., Apartment 3B).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `unit_number` | String | e.g. `"3B"` |
+| `estate_id` | UUID FK → `estates` | |
+| `monthly_rent` | Decimal(12,2) | Configured rent amount |
+| `status` | `UnitStatus` enum | `VACANT` / `OCCUPIED` / `MAINTENANCE` |
+| `description` | String? | Optional notes |
+
+**UnitStatus Enum:** `VACANT` · `OCCUPIED` · `MAINTENANCE`
+
+> **Unique constraint:** `(estate_id, unit_number)` — no duplicate unit numbers per estate.
+
+---
+
+### `tenant_profiles`
+Extends `User` for tenants. Links a tenant to their unit and lease dates.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `user_id` | UUID FK → `users` | Unique (1-to-1) |
+| `unit_id` | UUID FK → `units`? | Nullable (tenant not yet placed) |
+| `lease_start` | DateTime? | Lease start date |
+| `lease_end` | DateTime? | Lease expiry date |
+
+> When a tenant moves out, `unit_id` is set to `NULL` (SetNull), preserving payment history.
+
+---
+
+### `payments`
+**Immutable** financial records. Once created, rows are never updated — only voided.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `amount` | Decimal(12,2) | Amount paid |
+| `unit_id` | UUID FK → `units` | Restrict delete |
+| `tenant_id` | UUID FK → `tenant_profiles` | Restrict delete |
+| `payment_method` | `PaymentMethod` enum | |
+| `payment_date` | DateTime | Actual date of payment |
+| `period_month` | Int | Billing month (1–12) |
+| `period_year` | Int | Billing year (e.g. 2025) |
+| `reference` | String? | e.g. M-PESA code |
+| `notes` | String? | Free-text notes |
+| `is_voided` | Boolean | Soft-void flag |
+| `voided_at` | DateTime? | When voided |
+| `voided_reason` | String? | Why voided |
+| `created_at` | DateTime | **No** `updated_at` — immutable |
+
+**PaymentMethod Enum:** `CASH` · `MPESA` · `BANK_TRANSFER` · `CHEQUE` · `OTHER`
+
+---
+
+### `payment_adjustments`
+Correction layer on top of an immutable payment. Stores delta amounts with a reason.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `payment_id` | UUID FK → `payments` | |
+| `amount` | Decimal(12,2) | Positive = credit, Negative = debit |
+| `reason` | String | Required explanation |
+| `adjusted_by` | UUID FK → `users` | Who made the adjustment |
+| `created_at` | DateTime | Immutable |
+
+---
+
+### `complaints`
+Tracks issues raised by tenants or caretakers. Doubles as an **expense tracking** record.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `tenant_id` | UUID FK → `tenant_profiles`? | Nullable (caretaker-raised) |
+| `estate_id` | UUID FK → `estates` | |
+| `subject` | String | Short title |
+| `description` | String | Full details |
+| `status` | `ComplaintStatus` enum | Lifecycle status |
+| `source` | `ComplaintSource` enum | `TENANT` or `CARETAKER` |
+| `estimated_cost` | Decimal? | Caretaker's initial estimate |
+| `final_cost` | Decimal? | Actual cost after resolution |
+| `expense_status` | `ExpenseStatus` enum | Approval workflow |
+| `is_deductible` | Boolean | Deducted from owner payout? |
+| `approved_by` | UUID FK → `users`? | Who approved the expense |
+| `approved_at` | DateTime? | |
+| `is_voided` | Boolean | Soft-void flag |
+
+**ComplaintStatus Enum:** `OPEN` · `IN_PROGRESS` · `RESOLVED` · `CLOSED`  
+**ExpenseStatus Enum:** `PENDING_CARETAKER` · `PENDING_OWNER` · `APPROVED` · `REJECTED`
+
+---
+
+### `move_out_requests`
+Formal move-out process. Keeps a history of all exit requests for a unit.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `tenant_id` | UUID FK → `tenant_profiles` | |
+| `unit_id` | UUID FK → `units` | |
+| `requested_date` | DateTime | Date tenant wants to vacate |
+| `reason` | String? | Optional reason |
+| `status` | `MoveOutStatus` enum | |
+| `is_voided` | Boolean | Soft-void flag |
+
+**MoveOutStatus Enum:** `PENDING` · `APPROVED` · `REJECTED` · `COMPLETED`
+
+---
+
+### `audit_logs`
+Append-only log of every significant action in the system.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `actor_id` | UUID FK → `users` | Who performed the action |
+| `action` | String | e.g. `"CREATE"`, `"VOID_PAYMENT"` |
+| `entity` | String | Table name, e.g. `"payments"` |
+| `entity_id` | String | PK of the affected row |
+| `before` | JSON? | Snapshot before change |
+| `after` | JSON? | Snapshot after change |
+| `created_at` | DateTime | Immutable |
+
+---
+
+## How Meaningful Information Is Derived
+
+### 1. Rent Collection Status (per unit / per period)
+```sql
+-- Has this unit paid for March 2025?
+SELECT *
+FROM payments
+WHERE unit_id = '<unit_id>'
+  AND period_year = 2025
+  AND period_month = 3
+  AND is_voided = false;
+-- No rows = UNPAID. Rows present = check SUM(amount) vs unit.monthly_rent
+```
+> **Effective amount paid** = `SUM(payment.amount) + SUM(adjustment.amount)` for that period.
+
+---
+
+### 2. Occupancy Rate (per estate)
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE status = 'OCCUPIED') AS occupied,
+  COUNT(*) AS total,
+  ROUND(COUNT(*) FILTER (WHERE status = 'OCCUPIED') * 100.0 / COUNT(*), 1) AS occupancy_pct
+FROM units
+WHERE estate_id = '<estate_id>';
+```
+
+---
+
+### 3. Lease Expiry Alerts
+```sql
+-- Leases expiring within 30 days
+SELECT u.first_name, u.last_name, tp.lease_end, un.unit_number
+FROM tenant_profiles tp
+JOIN users u ON u.id = tp.user_id
+JOIN units un ON un.id = tp.unit_id
+WHERE tp.lease_end BETWEEN NOW() AND NOW() + INTERVAL '30 days';
+```
+
+---
+
+### 4. Total Revenue (per estate, per month)
+```sql
+SELECT
+  SUM(p.amount) + COALESCE(SUM(pa.amount), 0) AS net_revenue
+FROM payments p
+LEFT JOIN payment_adjustments pa ON pa.payment_id = p.id
+JOIN units u ON u.id = p.unit_id
+WHERE u.estate_id = '<estate_id>'
+  AND p.period_year = 2025
+  AND p.period_month = 3
+  AND p.is_voided = false;
+```
+
+---
+
+### 5. Expense Flow (Complaint → Approval → Deduction)
+```
+Complaint raised (OPEN)
+  → Caretaker sets estimated_cost (PENDING_CARETAKER)
+  → Owner reviews (PENDING_OWNER → APPROVED / REJECTED)
+  → If is_deductible = true: deduct final_cost from owner payout
+  → Complaint RESOLVED / CLOSED
+```
+Query to find approved deductible expenses:
+```sql
+SELECT subject, final_cost, approved_at
+FROM complaints
+WHERE estate_id = '<estate_id>'
+  AND expense_status = 'APPROVED'
+  AND is_deductible = true
+  AND is_voided = false;
+```
+
+---
+
+### 6. Net Owner Payout (Revenue minus Deductible Expenses)
+```
+Net Payout = Total Rent Collected − Approved Deductible Expenses
+```
+This is computed at the application layer by combining queries 4 and 5.
+
+---
+
+### 7. Full Audit Trail for a Record
+```sql
+-- Everything that happened to a payment
+SELECT actor_id, action, before, after, created_at
+FROM audit_logs
+WHERE entity = 'payments'
+  AND entity_id = '<payment_id>'
+ORDER BY created_at ASC;
+```
+
+---
+
+### 8. Tenant Arrears Report
+```sql
+-- Units that have NO payment for the current month
+SELECT un.unit_number, tp.user_id AS tenant_user_id
+FROM units un
+JOIN tenant_profiles tp ON tp.unit_id = un.id
+WHERE un.estate_id = '<estate_id>'
+  AND NOT EXISTS (
+    SELECT 1 FROM payments p
+    WHERE p.unit_id = un.id
+      AND p.period_year = EXTRACT(YEAR FROM NOW())
+      AND p.period_month = EXTRACT(MONTH FROM NOW())
+      AND p.is_voided = false
+  );
+```

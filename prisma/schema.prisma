@@ -1,0 +1,264 @@
+// MyCareTaker — Prisma Schema V2
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  OWNER
+  CARETAKER
+  TENANT
+}
+
+enum RentRecordStatus {
+  PENDING
+  PARTIAL
+  PAID
+  CARRIED_FORWARD
+}
+
+enum PaymentType {
+  FULL
+  INSTALLMENT
+  PARTIAL
+}
+
+enum ComplaintStatus {
+  OPEN
+  CARETAKER_REVIEW
+  OWNER_APPROVED
+  RESOLVED
+}
+
+enum RegistrationStatus {
+  AWAITING_ADMIN
+  APPROVED
+  DENIED
+}
+
+enum PendingRegistrationRole {
+  TENANT
+  CARETAKER
+  OWNER
+}
+
+// ─── Models ───────────────────────────────────────────────
+
+model User {
+  id                String   @id @default(uuid())
+  email             String?  @unique
+  password_hash     String?
+  first_name        String
+  last_name         String
+  phone             String?
+  role              Role
+  is_active         Boolean  @default(true)
+  refresh_token_hash String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  owned_estates           Estate[]              @relation("EstateOwner")
+  caretaker_estates       CaretakerEstate[]
+  audit_logs              AuditLog[]
+  tenancies               Tenancy[]
+  complaints_filed        Complaint[]
+  reviewed_registrations  PendingRegistration[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Estate {
+  id         String @id @default(uuid())
+  name       String
+  address    String
+  city       String
+  owner_id   String
+  owner      User   @relation("EstateOwner", fields: [owner_id], references: [id], onDelete: Cascade)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  houses            House[]
+  caretaker_estates CaretakerEstate[]
+  complaints        Complaint[]
+
+  @@index([owner_id])
+  @@map("estates")
+}
+
+model CaretakerEstate {
+  id        String @id @default(uuid())
+  user_id   String
+  estate_id String
+
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  estate Estate @relation(fields: [estate_id], references: [id], onDelete: Cascade)
+
+  assigned_at DateTime @default(now())
+
+  @@unique([user_id, estate_id])
+  @@index([user_id])
+  @@index([estate_id])
+  @@map("caretaker_estates")
+}
+
+model House {
+  id         String   @id @default(uuid())
+  name       String
+  estateId   String
+  rentAmount Decimal  @db.Decimal(12, 2)
+  isOccupied Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  estate     Estate   @relation(fields: [estateId], references: [id], onDelete: Cascade)
+  tenancies  Tenancy[]
+  complaints Complaint[]
+
+  @@unique([estateId, name])
+  @@index([estateId])
+  @@map("houses")
+}
+
+model Tenancy {
+  id          String    @id @default(uuid())
+  houseId     String
+  tenantId    String
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  monthlyRent Decimal   @db.Decimal(12, 2)
+  createdAt   DateTime  @default(now())
+
+  house       House        @relation(fields: [houseId], references: [id], onDelete: Restrict)
+  tenant      User         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  rentRecords RentRecord[]
+  payments    Payment[]
+  complaints  Complaint[]
+
+  @@index([houseId])
+  @@index([tenantId])
+  @@map("tenancies")
+}
+
+model RentRecord {
+  id                   String           @id @default(uuid())
+  tenancyId            String
+  monthYear            String
+  amountDue            Decimal          @db.Decimal(12, 2)
+  amountPaid           Decimal          @default(0) @db.Decimal(12, 2)
+  deficit              Decimal          @db.Decimal(12, 2)
+  status               RentRecordStatus
+  carriedForwardAmount Decimal          @default(0) @db.Decimal(12, 2)
+  confirmedByCaretaker Boolean          @default(false)
+  caretakerConfirmedAt DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  tenancy  Tenancy   @relation(fields: [tenancyId], references: [id], onDelete: Restrict)
+  payments Payment[]
+
+  @@unique([tenancyId, monthYear])
+  @@index([monthYear])
+  @@map("rent_records")
+}
+
+model Payment {
+  id                   String      @id @default(uuid())
+  rentRecordId         String
+  tenancyId            String
+  amount               Decimal     @db.Decimal(12, 2)
+  paymentDate          DateTime
+  paymentType          PaymentType
+  weekNumber           Int?
+  note                 String?
+  confirmedByCaretaker Boolean     @default(false)
+  confirmedAt          DateTime?
+  rejectedByCaretaker  Boolean     @default(false)
+  rejectionReason      String?
+  createdAt            DateTime    @default(now())
+
+  rentRecord RentRecord @relation(fields: [rentRecordId], references: [id], onDelete: Restrict)
+  tenancy    Tenancy    @relation(fields: [tenancyId], references: [id], onDelete: Restrict)
+
+  @@index([rentRecordId])
+  @@index([tenancyId])
+  @@map("payments")
+}
+
+model Complaint {
+  id                  String          @id @default(uuid())
+  houseId             String
+  tenancyId           String
+  estateId            String
+  description         String
+  filedByTenantId     String
+  status              ComplaintStatus @default(OPEN)
+  isDeductibleExpense Boolean         @default(false)
+  estimatedCost       Decimal?        @db.Decimal(12, 2)
+  approvedCost        Decimal?        @db.Decimal(12, 2)
+  caretakerNotes      String?
+  ownerNotes          String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  house         House   @relation(fields: [houseId], references: [id], onDelete: Restrict)
+  tenancy       Tenancy @relation(fields: [tenancyId], references: [id], onDelete: Restrict)
+  estate        Estate  @relation(fields: [estateId], references: [id], onDelete: Cascade)
+  filedByTenant User    @relation(fields: [filedByTenantId], references: [id], onDelete: Restrict)
+
+  @@index([houseId])
+  @@index([tenancyId])
+  @@index([estateId])
+  @@index([filedByTenantId])
+  @@map("complaints")
+}
+
+model PendingRegistration {
+  id                String             @id @default(uuid())
+  fullName          String
+  phoneNumber       String
+  email             String
+  passwordHash      String
+  role              PendingRegistrationRole
+  estateOfInterest  String?
+  message           String?
+  status            RegistrationStatus @default(AWAITING_ADMIN)
+  reviewedByAdminId String?
+  reviewedAt        DateTime?
+  createdAt         DateTime           @default(now())
+
+  reviewedByAdmin User? @relation(fields: [reviewedByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("pending_registrations")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actor_id  String
+  action    String
+  entity    String
+  entity_id String
+  before    Json?
+  after     Json?
+
+  actor User @relation(fields: [actor_id], references: [id], onDelete: Restrict)
+
+  created_at DateTime @default(now())
+
+  @@index([actor_id])
+  @@index([entity, entity_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}
