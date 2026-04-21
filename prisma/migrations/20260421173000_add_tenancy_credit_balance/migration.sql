@@ -1,0 +1,2 @@
+ALTER TABLE "tenancies"
+ADD COLUMN "creditBalance" DECIMAL(12,2) NOT NULL DEFAULT 0;

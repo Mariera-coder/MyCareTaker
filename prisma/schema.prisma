@@ -138,6 +138,8 @@ model Tenancy {
   startDate   DateTime  @default(now())
   endDate     DateTime?
   monthlyRent Decimal   @db.Decimal(12, 2)
+  securityDepositAmount Decimal @default(0) @db.Decimal(12, 2)
+  creditBalance Decimal @default(0) @db.Decimal(12, 2)
   createdAt   DateTime  @default(now())
 
   house       House        @relation(fields: [houseId], references: [id], onDelete: Restrict)

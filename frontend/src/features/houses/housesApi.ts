@@ -19,6 +19,17 @@ export const housesApi = apiClient.injectEndpoints({
       }),
       invalidatesTags: ["Estates", "Reports"],
     }),
+    updateHouseSecurityDeposit: builder.mutation<
+      AvailableHouse,
+      { houseId: string; securityDepositAmount: number }
+    >({
+      query: ({ houseId, securityDepositAmount }) => ({
+        url: `/houses/${houseId}/security-deposit`,
+        method: "PATCH",
+        body: { securityDepositAmount },
+      }),
+      invalidatesTags: ["Estates", "Reports"],
+    }),
     vacateTenant: builder.mutation<{ message: string }, { houseId: string }>({
       query: ({ houseId }) => ({
         url: `/houses/${houseId}/vacate`,
@@ -44,6 +55,7 @@ export const {
   useGetAvailableHousesQuery,
   useGetHousesByEstateQuery,
   useUpdateHouseRentMutation,
+  useUpdateHouseSecurityDepositMutation,
   useVacateTenantMutation,
   useManualRegisterTenantMutation,
 } = housesApi;

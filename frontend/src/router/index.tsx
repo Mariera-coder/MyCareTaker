@@ -11,6 +11,8 @@ import { ComplaintsListPage } from "@/features/complaints/ComplaintsListPage";
 import { SubmitComplaintPage } from "@/features/complaints/SubmitComplaintPage";
 import { CaretakerReviewPage } from "@/features/complaints/CaretakerReviewPage";
 import { OwnerApprovalPage } from "@/features/complaints/OwnerApprovalPage";
+import { ApprovedRentConfirmationPage } from "@/features/payments/ApprovedRentConfirmationPage";
+import { MonthlyReportPage } from "@/features/reports/MonthlyReportPage";
 
 function ShellLayout() {
   return (
@@ -44,12 +46,16 @@ export function AppRouter() {
       <Route element={<ProtectedRoute allow={["CARETAKER"]} />}>
         <Route element={<ShellLayout />}>
           <Route path="/complaints/caretaker-review" element={<CaretakerReviewPage />} />
+          <Route path="/rent-confirmations" element={<ApprovedRentConfirmationPage />} />
+          <Route path="/reports/monthly" element={<MonthlyReportPage />} />
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute allow={["OWNER"]} />}>
         <Route element={<ShellLayout />}>
           <Route path="/complaints/owner-approval" element={<OwnerApprovalPage />} />
+          <Route path="/rent-confirmations" element={<ApprovedRentConfirmationPage />} />
+          <Route path="/reports/monthly" element={<MonthlyReportPage />} />
         </Route>
       </Route>
 

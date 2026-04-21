@@ -40,6 +40,7 @@ export interface AuthResponse {
         tenantContext: {
             tenancyId: string;
             monthlyRent: number;
+            securityDepositAmount?: number;
             house: {
                 id: string;
                 name: string;

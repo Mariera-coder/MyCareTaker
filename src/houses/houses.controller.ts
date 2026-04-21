@@ -6,6 +6,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser, Role } from '../common/types';
 import { UpdateHouseRentDto } from './dto/update-house-rent.dto';
+import { UpdateHouseSecurityDepositDto } from './dto/update-house-security-deposit.dto';
 import { CreateHouseDto } from './dto/create-house.dto';
 import { ManualRegisterTenantDto } from './dto/manual-register-tenant.dto';
 
@@ -39,6 +40,20 @@ export class HousesController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.housesService.updateRent(houseId, dto.rentAmount, user.id);
+  }
+
+  @Patch(':houseId/security-deposit')
+  @Roles(Role.ADMIN)
+  updateSecurityDeposit(
+    @Param('houseId') houseId: string,
+    @Body() dto: UpdateHouseSecurityDepositDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.housesService.updateSecurityDeposit(
+      houseId,
+      dto.securityDepositAmount,
+      user.id,
+    );
   }
 
   @Post(':houseId/vacate')

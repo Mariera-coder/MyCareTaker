@@ -1,13 +1,10 @@
 import { useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAppSelector } from "@/app/hooks";
 import {
-  useConfirmPaymentMutation,
   useGetEstateDashboardQuery,
   useGetMonthlyReportQuery,
-  useGetPendingPaymentsQuery,
   useGetTenantDashboardQuery,
-  useRejectPaymentMutation,
   useSubmitTenantPaymentMutation,
 } from "@/features/payments/paymentsApi";
 import { useGetComplaintsByEstateQuery } from "@/features/complaints/complaintsApi";
@@ -42,9 +39,6 @@ export function DashboardPage() {
   const estateDashboard = useGetEstateDashboardQuery(activeEstateId, {
     skip: !activeEstateId || !user || !["CARETAKER", "OWNER"].includes(user.role),
   });
-  const pendingPayments = useGetPendingPaymentsQuery(activeEstateId, {
-    skip: !activeEstateId || user?.role !== "CARETAKER",
-  });
   const complaints = useGetComplaintsByEstateQuery(activeEstateId, {
     skip: !activeEstateId || !user || !["CARETAKER", "OWNER"].includes(user.role),
   });
@@ -56,11 +50,8 @@ export function DashboardPage() {
   );
 
   const [submitPayment, { isLoading: submittingPayment }] = useSubmitTenantPaymentMutation();
-  const [confirmPayment, { isLoading: confirmingPayment }] = useConfirmPaymentMutation();
-  const [rejectPayment, { isLoading: rejectingPayment }] = useRejectPaymentMutation();
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentWeek, setPaymentWeek] = useState<number | null>(null);
-  const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
 
   const selectedEstate = useMemo(
     () => availableEstates.find((estate) => estate.id === activeEstateId) ?? null,
@@ -102,7 +93,11 @@ export function DashboardPage() {
         <DashboardHeader title="Tenant Dashboard" estateName={dashboard.tenancy.estate.name} />
 
         <div className="grid gap-4 md:grid-cols-3">
-          <StatCard title="Monthly Rent Due" value={formatKes(dashboard.summary.monthlyRentDue)} backgroundColor="bg-[#1d4ed8]" />
+          <StatCard
+            title="Total Due This Month"
+            value={formatKes(dashboard.summary.monthlyRentDue)}
+            backgroundColor="bg-[#1d4ed8]"
+          />
           <StatCard title="Amount Paid This Month" value={formatKes(dashboard.summary.amountPaidThisMonth)} backgroundColor="bg-[#15803d]" />
           <StatCard
             title="Outstanding Balance"
@@ -111,7 +106,26 @@ export function DashboardPage() {
           />
         </div>
 
-        {dashboard.previousMonthStatus ? (
+        {dashboard.summary.includesSecurityDeposit && dashboard.summary.securityDepositAmount > 0 ? (
+          <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            This tenancy includes a one-time security deposit of {formatKes(dashboard.summary.securityDepositAmount)}.
+            <span className="ml-2 inline-flex rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-sky-900">
+              Deposit {dashboard.summary.depositSettled ? "Paid" : "Pending"}
+            </span>
+          </div>
+        ) : null}
+
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+          This month&apos;s total was calculated as {formatKes(dashboard.summary.baseRent)} rent
+          {dashboard.summary.securityDepositCharged > 0
+            ? ` + ${formatKes(dashboard.summary.securityDepositCharged)} security deposit`
+            : ""}
+          {dashboard.summary.carriedForward > 0
+            ? ` + ${formatKes(dashboard.summary.carriedForward)} carried forward`
+            : ""}.
+        </div>
+
+        {dashboard.previousMonthStatus && dashboard.previousMonthStatus.deficit > 0 ? (
           <div
             className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
               dashboard.previousMonthStatus.deficit > 0
@@ -133,19 +147,40 @@ export function DashboardPage() {
           <DataTable
             columns={[
               { key: "month", header: "Month", render: (row) => row.monthYear },
-              { key: "due", header: "Rent Due (KES)", render: (row) => formatKes(row.amountDue) },
-              { key: "paid", header: "Paid (KES)", render: (row) => formatKes(row.amountPaid) },
+              { key: "rent", header: "Base Rent (KES)", render: (row) => formatKes(row.baseRent) },
+              { key: "deposit", header: "Deposit (KES)", render: (row) => formatKes(row.securityDepositCharged) },
               {
-                key: "deficit",
-                header: "Deficit (KES)",
-                className: "font-semibold",
+                key: "deposit-status",
+                header: "Deposit Status",
+                render: (row) =>
+                  row.securityDepositCharged > 0 ? (
+                    <Badge variant={dashboard.summary.depositSettled ? "success" : "warning"}>
+                      {dashboard.summary.depositSettled ? "Paid" : "Pending"}
+                    </Badge>
+                  ) : "-",
+              },
+              {
+                key: "carry",
+                header: "Carried Forward (KES)",
                 render: (row) => (
-                  <span className={row.deficit > 0 ? "font-bold text-[#b91c1c]" : "text-[#15803d]"}>
-                    {formatKes(row.deficit)}
+                  <span className={row.carriedForwardAmount > 0 ? "font-bold text-[#b91c1c]" : "text-[#15803d]"}>
+                    {formatKes(row.carriedForwardAmount)}
                   </span>
                 ),
               },
-              { key: "status", header: "Status", render: (row) => <StatusPill status={row.status} /> },
+              { key: "due", header: "Total Due (KES)", render: (row) => formatKes(row.amountDue) },
+              { key: "paid", header: "Paid (KES)", render: (row) => formatKes(row.amountPaid) },
+              {
+                key: "deficit",
+                header: "Balance (KES)",
+                className: "font-semibold",
+                render: (row) => (
+                  <span className={row.displayBalance > 0 ? "font-bold text-[#b91c1c]" : "text-[#15803d]"}>
+                    {formatKes(row.displayBalance)}
+                  </span>
+                ),
+              },
+              { key: "status", header: "Status", render: (row) => <StatusPill status={row.displayStatus} /> },
               {
                 key: "action",
                 header: "Action",
@@ -253,7 +288,12 @@ export function DashboardPage() {
           estateName={selectedEstate?.name}
         />
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-5">
+          <StatCard
+            title="Total Units"
+            value={String(dashboard.stats.occupiedUnits + dashboard.stats.vacantUnits)}
+            backgroundColor="bg-[#334155]"
+          />
           <StatCard title="Total Rent Expected" value={formatKes(dashboard.stats.totalRentExpected)} backgroundColor="bg-[#1d4ed8]" />
           <StatCard title="Total Collected This Month" value={formatKes(dashboard.stats.totalCollected)} backgroundColor="bg-[#15803d]" />
           <StatCard title="Total Deficit This Month" value={formatKes(dashboard.stats.totalDeficit)} backgroundColor="bg-[#b91c1c]" />
@@ -272,12 +312,37 @@ export function DashboardPage() {
           <DataTable
             columns={[
               { key: "house", header: "House Name", render: (row) => row.houseName },
-              { key: "tenant", header: "Tenant Name", render: (row) => row.tenantName },
-              { key: "rent", header: "Monthly Rent (KES)", render: (row) => formatKes(row.monthlyRent) },
+              {
+                key: "tenant",
+                header: "Tenant Name",
+                render: (row) => (row.tenantName === "Vacant" ? <Badge variant="destructive">Vacant</Badge> : row.tenantName),
+              },
+              { key: "rent", header: "Base Rent (KES)", render: (row) => formatKes(row.monthlyRent) },
+              { key: "deposit", header: "Deposit (KES)", render: (row) => formatKes(row.securityDepositCharged) },
+              {
+                key: "deposit-status",
+                header: "Deposit Status",
+                render: (row) =>
+                  row.securityDepositAmount > 0 ? (
+                    <Badge variant={row.depositSettled ? "success" : "warning"}>
+                      {row.depositSettled ? "Paid" : "Pending"}
+                    </Badge>
+                  ) : "-",
+              },
+              {
+                key: "carry",
+                header: "Carried Forward (KES)",
+                render: (row) => (
+                  <span className={row.carriedForward > 0 ? "font-bold text-[#b91c1c]" : "text-[#15803d]"}>
+                    {formatKes(row.carriedForward)}
+                  </span>
+                ),
+              },
+              { key: "due", header: "Due This Month (KES)", render: (row) => formatKes(row.expectedThisMonth) },
               { key: "paid", header: "Paid (KES)", render: (row) => formatKes(row.paid) },
               {
                 key: "deficit",
-                header: "Deficit (KES)",
+                header: "Balance (KES)",
                 render: (row) => (
                   <span className={row.deficit > 0 ? "font-bold text-[#b91c1c]" : "text-[#15803d]"}>
                     {formatKes(row.deficit)}
@@ -297,55 +362,36 @@ export function DashboardPage() {
           />
         </div>
 
-        {user.role === "CARETAKER" ? (
-          <Card className="rounded-xl border-slate-200">
-            <CardHeader>
-              <CardTitle>Awaiting Confirmation</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {(pendingPayments.data ?? []).map((payment) => (
-                <div key={payment.id} className="rounded-xl border border-slate-200 p-4">
-                  <div className="grid gap-2 md:grid-cols-5">
-                    <p>{payment.houseName}</p>
-                    <p>{payment.tenantName}</p>
-                    <p>{formatKes(payment.amountClaimed)}</p>
-                    <p>{payment.paymentType}</p>
-                    <p>{new Date(payment.dateSubmitted).toLocaleString()}</p>
-                  </div>
-                  <div className="mt-3 flex gap-3">
-                    <Button disabled={confirmingPayment} onClick={() => confirmPayment(payment.id)}>
-                      Confirm
-                    </Button>
-                    <Input
-                      placeholder="Reject reason"
-                      value={rejectReason[payment.id] ?? ""}
-                      onChange={(event) =>
-                        setRejectReason((current) => ({ ...current, [payment.id]: event.target.value }))
-                      }
-                    />
-                    <Button
-                      variant="destructive"
-                      disabled={rejectingPayment || !rejectReason[payment.id]}
-                      onClick={() => rejectPayment({ paymentId: payment.id, reason: rejectReason[payment.id] })}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ) : null}
-
         <Card className="rounded-xl border-slate-200">
           <CardHeader>
             <CardTitle>Monthly Reports</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-2 text-sm text-slate-700 md:grid-cols-2">
-            <p>Total collected: {formatKes(report?.total_rent_collected ?? 0)}</p>
-            <p>Total deductions: {formatKes(report?.total_deductions ?? 0)}</p>
-            <p>Net payout: {formatKes(report?.net_owner_payout ?? 0)}</p>
-            <p>Complaints in queue: {complaints.data?.length ?? 0}</p>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Collected</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{formatKes(report?.total_rent_collected ?? 0)}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Deductions</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{formatKes(report?.total_deductions ?? 0)}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Net Payout</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{formatKes(report?.net_owner_payout ?? 0)}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+              <div className="space-y-1">
+                <p className="font-medium text-slate-900">Open the full monthly report workspace</p>
+                <p className="text-sm text-slate-600">
+                  Complaints in queue: {complaints.data?.length ?? 0}. This is the best place to expand month-by-month reporting next.
+                </p>
+              </div>
+              <Button asChild>
+                <Link to="/reports/monthly">Open Reports</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

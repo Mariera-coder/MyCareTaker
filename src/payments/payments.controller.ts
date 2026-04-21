@@ -40,6 +40,19 @@ export class PaymentsController {
     return this.paymentsService.listPendingPayments(estateId, user.id);
   }
 
+  @Get('estate/:estateId/confirmations')
+  @Roles(Role.CARETAKER, Role.OWNER, Role.ADMIN)
+  getEstatePaymentConfirmations(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.paymentsService.getEstatePaymentConfirmations(
+      estateId,
+      user.id,
+      user.role,
+    );
+  }
+
   @Patch(':paymentId/confirm')
   @Roles(Role.CARETAKER)
   confirmPayment(@Param('paymentId') paymentId: string, @CurrentUser() user: AuthenticatedUser) {

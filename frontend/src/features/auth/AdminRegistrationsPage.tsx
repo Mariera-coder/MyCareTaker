@@ -4,7 +4,14 @@ import {
   useDenyPendingRegistrationMutation,
   useGetPendingRegistrationsQuery,
 } from "@/features/auth/authApi";
-import { useGetAvailableHousesQuery, useGetHousesByEstateQuery, useManualRegisterTenantMutation, useUpdateHouseRentMutation, useVacateTenantMutation } from "@/features/houses/housesApi";
+import {
+  useGetAvailableHousesQuery,
+  useGetHousesByEstateQuery,
+  useManualRegisterTenantMutation,
+  useUpdateHouseRentMutation,
+  useUpdateHouseSecurityDepositMutation,
+  useVacateTenantMutation,
+} from "@/features/houses/housesApi";
 import { useGetEstatesQuery } from "@/features/estates/estatesApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,11 +28,13 @@ export function AdminRegistrationsPage() {
   const [denyRegistration] = useDenyPendingRegistrationMutation();
   const [manualRegisterTenant] = useManualRegisterTenantMutation();
   const [updateHouseRent] = useUpdateHouseRentMutation();
+  const [updateHouseSecurityDeposit] = useUpdateHouseSecurityDepositMutation();
   const [vacateTenant] = useVacateTenantMutation();
 
   const [houseSelection, setHouseSelection] = useState<Record<string, string>>({});
   const [denyReason, setDenyReason] = useState<Record<string, string>>({});
   const [rentDrafts, setRentDrafts] = useState<Record<string, string>>({});
+  const [depositDrafts, setDepositDrafts] = useState<Record<string, string>>({});
   const [manualTenant, setManualTenant] = useState({
     fullName: "",
     phone: "",
@@ -168,7 +177,7 @@ export function AdminRegistrationsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Rent Amount Control and Vacate</CardTitle>
+        <CardTitle>Rent Amount Control and Vacate</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Select value={selectedEstateId} onValueChange={setSelectedEstateId}>
@@ -185,10 +194,15 @@ export function AdminRegistrationsPage() {
           </Select>
 
           {estateHouses?.map((house) => (
-            <div key={house.id} className="grid gap-3 rounded-lg border p-4 md:grid-cols-[1.5fr_1fr_1fr_auto]">
+            <div key={house.id} className="grid gap-3 rounded-lg border p-4 md:grid-cols-[1.7fr_1fr_auto_1fr_auto_auto]">
               <div>
                 <p className="font-semibold">{house.name}</p>
                 <p className="text-sm text-slate-600">{house.estate.name}</p>
+                <p className="text-sm text-slate-600">
+                  {house.tenancies?.[0]
+                    ? `Tenant: ${house.tenancies[0].tenant.first_name} ${house.tenancies[0].tenant.last_name}`
+                    : "Vacant house"}
+                </p>
               </div>
               <Input
                 type="number"
@@ -200,6 +214,28 @@ export function AdminRegistrationsPage() {
               />
               <Button onClick={() => updateHouseRent({ houseId: house.id, rentAmount: Number(rentDrafts[house.id] || house.rentAmount) })}>
                 Save Rent
+              </Button>
+              <Input
+                type="number"
+                step="0.01"
+                defaultValue={String(house.tenancies?.[0]?.securityDepositAmount ?? 0)}
+                disabled={!house.tenancies?.[0]}
+                onChange={(event) =>
+                  setDepositDrafts((current) => ({ ...current, [house.id]: event.target.value }))
+                }
+              />
+              <Button
+                disabled={!house.tenancies?.[0]}
+                onClick={() =>
+                  updateHouseSecurityDeposit({
+                    houseId: house.id,
+                    securityDepositAmount: Number(
+                      depositDrafts[house.id] ?? house.tenancies?.[0]?.securityDepositAmount ?? 0,
+                    ),
+                  })
+                }
+              >
+                Save Deposit
               </Button>
               <Button variant="destructive" onClick={() => vacateTenant({ houseId: house.id })}>
                 Vacate

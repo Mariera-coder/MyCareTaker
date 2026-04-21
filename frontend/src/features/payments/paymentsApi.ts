@@ -1,5 +1,11 @@
 import { apiClient } from "@/lib/apiClient";
-import type { EstateDashboard, MonthlyReport, PendingPayment, TenantDashboard } from "@/lib/types";
+import type {
+  EstateDashboard,
+  EstatePaymentConfirmation,
+  MonthlyReport,
+  PendingPayment,
+  TenantDashboard,
+} from "@/lib/types";
 
 export const paymentsApi = apiClient.injectEndpoints({
   endpoints: (builder) => ({
@@ -24,6 +30,10 @@ export const paymentsApi = apiClient.injectEndpoints({
     }),
     getPendingPayments: builder.query<PendingPayment[], string>({
       query: (estateId) => `/payments/estate/${estateId}/pending`,
+      providesTags: ["Reports"],
+    }),
+    getEstatePaymentConfirmations: builder.query<EstatePaymentConfirmation, string>({
+      query: (estateId) => `/payments/estate/${estateId}/confirmations`,
       providesTags: ["Reports"],
     }),
     confirmPayment: builder.mutation<unknown, string>({
@@ -54,6 +64,7 @@ export const {
   useSubmitTenantPaymentMutation,
   useGetEstateDashboardQuery,
   useGetPendingPaymentsQuery,
+  useGetEstatePaymentConfirmationsQuery,
   useConfirmPaymentMutation,
   useRejectPaymentMutation,
   useGetMonthlyReportQuery,

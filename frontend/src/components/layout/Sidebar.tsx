@@ -13,6 +13,8 @@ const links: NavLink[] = [
   { to: "/dashboard", label: "Dashboard", roles: ["ADMIN", "OWNER", "CARETAKER", "TENANT"] },
   { to: "/complaints", label: "Complaints", roles: ["OWNER", "CARETAKER", "TENANT"] },
   { to: "/complaints/submit", label: "Submit Complaint", roles: ["CARETAKER", "TENANT"] },
+  { to: "/rent-confirmations", label: "Rent Confirmations", roles: ["OWNER", "CARETAKER"] },
+  { to: "/reports/monthly", label: "Monthly Reports", roles: ["OWNER", "CARETAKER"] },
   { to: "/complaints/caretaker-review", label: "Caretaker Review Queue", roles: ["CARETAKER"] },
   { to: "/complaints/owner-approval", label: "Approved Complaints", roles: ["OWNER"] },
   { to: "/admin/registrations", label: "Pending Registrations", roles: ["ADMIN"] },

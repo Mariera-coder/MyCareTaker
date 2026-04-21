@@ -61,6 +61,18 @@ export interface AvailableHouse {
   estateId: string;
   rentAmount: string | number;
   isOccupied?: boolean;
+  tenancies?: Array<{
+    id: string;
+    securityDepositAmount: string | number;
+    tenant: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      phone?: string | null;
+      email?: string | null;
+      is_active?: boolean;
+    };
+  }>;
   estate: {
     id: string;
     name: string;
@@ -83,6 +95,9 @@ export interface TenantDashboard {
   tenancy: {
     id: string;
     monthlyRent: number;
+    securityDepositAmount: number;
+    creditBalance: number;
+    moveInDate: string;
     house: { id: string; name: string };
     estate: EstateSummary;
   };
@@ -90,6 +105,13 @@ export interface TenantDashboard {
     monthlyRentDue: number;
     amountPaidThisMonth: number;
     outstandingBalance: number;
+    securityDepositAmount: number;
+    includesSecurityDeposit: boolean;
+    baseRent: number;
+    carriedForward: number;
+    securityDepositCharged: number;
+    depositSettled: boolean;
+    creditBalance: number;
   };
   previousMonthStatus: {
     status: RentRecordStatus;
@@ -101,6 +123,11 @@ export interface TenantDashboard {
     amountDue: number;
     amountPaid: number;
     deficit: number;
+    carriedForwardAmount: number;
+    baseRent: number;
+    securityDepositCharged: number;
+    displayBalance: number;
+    displayStatus: RentRecordStatus;
     status: RentRecordStatus;
     pendingConfirmation: boolean;
   }>;
@@ -122,16 +149,26 @@ export interface EstateDashboard {
     totalRentExpected: number;
     totalCollected: number;
     totalDeficit: number;
+    occupiedUnits: number;
+    vacantUnits: number;
     awaitingConfirmation: number;
     totalApprovedDeductibleExpenses: number;
   };
   rows: Array<{
     houseId: string;
+    tenantId: string | null;
     houseName: string;
     tenantName: string;
+    tenantPhone: string | null;
+    tenantEmail: string | null;
     monthlyRent: number;
+    carriedForward: number;
+    securityDepositCharged: number;
+    depositSettled: boolean;
+    expectedThisMonth: number;
     paid: number;
     deficit: number;
+    securityDepositAmount: number;
     prevMonthStatus: string;
   }>;
 }
@@ -145,6 +182,45 @@ export interface PendingPayment {
   dateSubmitted: string;
   weekNumber: number | null;
   note: string | null;
+}
+
+export interface TenantReceipt {
+  id: string;
+  amount: number;
+  paymentDate: string;
+  confirmedAt: string | null;
+  paymentType: "FULL" | "INSTALLMENT" | "PARTIAL";
+  cycleLabel: string;
+  note: string | null;
+}
+
+export interface EstatePaymentConfirmation {
+  tenants: Array<{
+    tenancyId: string;
+    tenantId: string;
+    tenantName: string;
+    tenantPhone: string | null;
+    tenantEmail: string | null;
+    houseId: string;
+    houseName: string;
+    isActive: boolean;
+    creditBalance: number;
+    receipts: TenantReceipt[];
+  }>;
+  pendingPayments: Array<{
+    id: string;
+    tenancyId: string;
+    tenantId: string;
+    tenantName: string;
+    tenantPhone: string | null;
+    tenantEmail: string | null;
+    houseName: string;
+    amountClaimed: number;
+    paymentType: "FULL" | "INSTALLMENT" | "PARTIAL";
+    dateSubmitted: string;
+    cycleLabel: string;
+    note: string | null;
+  }>;
 }
 
 export interface Complaint {

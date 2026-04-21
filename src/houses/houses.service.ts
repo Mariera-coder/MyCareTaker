@@ -102,6 +102,106 @@ export class HousesService {
     return updated;
   }
 
+  async updateSecurityDeposit(
+    houseId: string,
+    securityDepositAmount: number,
+    actorId: string,
+  ) {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: actorId },
+      select: { role: true },
+    });
+
+    if (!actor || actor.role !== Role.ADMIN) {
+      throw new ForbiddenException('Only admins can update security deposit');
+    }
+
+    const tenancy = await this.prisma.tenancy.findFirst({
+      where: { houseId, endDate: null },
+      include: {
+        house: true,
+        rentRecords: {
+          orderBy: { monthYear: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!tenancy) {
+      throw new NotFoundException('Active tenancy not found for this house');
+    }
+
+    const previousAmount = Number(tenancy.securityDepositAmount);
+    const delta = securityDepositAmount - previousAmount;
+
+    const updatedTenancy = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.tenancy.update({
+        where: { id: tenancy.id },
+        data: {
+          securityDepositAmount: new Prisma.Decimal(securityDepositAmount),
+        },
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              phone: true,
+              email: true,
+              is_active: true,
+            },
+          },
+        },
+      });
+
+      const monthYear = this.getBillingCycleMonthYear(
+        new Date(),
+        tenancy.startDate.getUTCDate(),
+      );
+      const currentRecord = await tx.rentRecord.findUnique({
+        where: {
+          tenancyId_monthYear: {
+            tenancyId: tenancy.id,
+            monthYear,
+          },
+        },
+      });
+
+      if (currentRecord && delta !== 0) {
+        const amountDue = Math.max(Number(currentRecord.amountDue) + delta, 0);
+        const deficit = Math.max(amountDue - Number(currentRecord.amountPaid), 0);
+        await tx.rentRecord.update({
+          where: { id: currentRecord.id },
+          data: {
+            amountDue: new Prisma.Decimal(amountDue),
+            deficit: new Prisma.Decimal(deficit),
+            status:
+              deficit <= 0
+                ? 'PAID'
+                : Number(currentRecord.amountPaid) > 0
+                  ? 'PARTIAL'
+                  : 'PENDING',
+          },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actor_id: actorId,
+          action: 'HOUSE_SECURITY_DEPOSIT_UPDATED',
+          entity: 'Tenancy',
+          entity_id: tenancy.id,
+          before: { securityDepositAmount: previousAmount },
+          after: { securityDepositAmount },
+        },
+      });
+
+      return updated;
+    });
+
+    return updatedTenancy;
+  }
+
   async vacateTenant(houseId: string, actorId: string) {
     const actor = await this.prisma.user.findUnique({
       where: { id: actorId },
@@ -191,6 +291,7 @@ export class HousesService {
           tenantId: createdUser.id,
           startDate: new Date(),
           monthlyRent: house.rentAmount,
+          securityDepositAmount: house.rentAmount,
         },
       });
 
@@ -260,5 +361,31 @@ export class HousesService {
       suffix += 1;
     }
     return candidate;
+  }
+
+  private getMonthYear(date: Date) {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+
+  private getBillingCycleMonthYear(date: Date, billingAnchorDay: number) {
+    const currentDay = date.getUTCDate();
+    const base = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+    const targetMonthDate =
+      currentDay >= billingAnchorDay
+        ? base
+        : new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - 1, 1));
+    const daysInMonth = new Date(
+      Date.UTC(targetMonthDate.getUTCFullYear(), targetMonthDate.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+
+    return this.getMonthYear(
+      new Date(
+        Date.UTC(
+          targetMonthDate.getUTCFullYear(),
+          targetMonthDate.getUTCMonth(),
+          Math.min(billingAnchorDay, daysInMonth),
+        ),
+      ),
+    );
   }
 }

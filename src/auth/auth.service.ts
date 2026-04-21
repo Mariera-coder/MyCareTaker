@@ -394,6 +394,7 @@ export class AuthService {
             tenantId: user.id,
             startDate: new Date(),
             monthlyRent: new Prisma.Decimal(house.rentAmount),
+            securityDepositAmount: new Prisma.Decimal(house.rentAmount),
           },
         });
 
