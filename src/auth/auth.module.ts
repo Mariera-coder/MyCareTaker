@@ -7,9 +7,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 
 @Module({
-    imports: [PassportModule, JwtModule.register({})],
-    controllers: [AuthController],
-    providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
-    exports: [AuthService],
+  imports: [PassportModule, JwtModule.register({})],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
+  exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

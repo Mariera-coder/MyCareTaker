@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import { registrationRequestSchema } from "@/lib/zodSchemas";
 import { useSubmitRegistrationMutation } from "@/features/auth/authApi";
+import type { RequestedEstate } from "@/features/auth/estateRequest";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,10 +17,14 @@ type FormValues = z.infer<typeof registrationRequestSchema>;
 
 export function RegisterRequestPage() {
   const [submitRegistration, { isLoading, isSuccess }] = useSubmitRegistrationMutation();
+  const [estateCount, setEstateCount] = useState(1);
+  const [requestedEstates, setRequestedEstates] = useState<RequestedEstate[]>([{ name: "", unitCount: 0 }]);
+  const [estateError, setEstateError] = useState("");
   const {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(registrationRequestSchema),
@@ -27,9 +33,40 @@ export function RegisterRequestPage() {
     },
   });
 
+  const role = watch("role");
+  const needsEstatePlanner = role === "OWNER" || role === "CARETAKER";
+
+  const estateRows = useMemo(
+    () =>
+      Array.from({ length: estateCount }, (_, index) => requestedEstates[index] ?? { name: "", unitCount: 0 }),
+    [estateCount, requestedEstates],
+  );
+
   const onSubmit = async (values: FormValues) => {
     const { confirmPassword, ...payload } = values;
     void confirmPassword;
+
+    if (needsEstatePlanner) {
+      const normalizedEstates = estateRows.map((estate) => ({
+        name: estate.name.trim(),
+        unitCount: role === "CARETAKER" ? Number(estate.unitCount ?? 0) : undefined,
+      }));
+
+      if (normalizedEstates.some((estate) => !estate.name)) {
+        setEstateError("Enter the name for every estate before submitting.");
+        return;
+      }
+
+      setEstateError("");
+      await submitRegistration({
+        ...payload,
+        estateOfInterest: undefined,
+        requestedEstates: normalizedEstates,
+      }).unwrap();
+      return;
+    }
+
+    setEstateError("");
     await submitRegistration(payload).unwrap();
   };
 
@@ -122,14 +159,79 @@ export function RegisterRequestPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="estateOfInterest">Estate of Interest</Label>
-                  <Input
-                    id="estateOfInterest"
-                    className="h-11 rounded-xl border-[#dccfb9] bg-[#fffdf9] focus-visible:ring-amber-600"
-                    {...register("estateOfInterest")}
-                  />
-                </div>
+                {needsEstatePlanner ? (
+                  <div className="space-y-4 rounded-2xl border border-[#eadfcd] bg-[#fffaf1] p-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="estateCount">
+                        {role === "CARETAKER" ? "How many estates are you overseeing?" : "How many estates are you registering?"}
+                      </Label>
+                      <Input
+                        id="estateCount"
+                        type="number"
+                        min={1}
+                        value={estateCount}
+                        className="h-11 rounded-xl border-[#dccfb9] bg-white focus-visible:ring-amber-600"
+                        onChange={(event) => {
+                          const nextCount = Math.max(1, Number(event.target.value || 1));
+                          setEstateCount(nextCount);
+                          setRequestedEstates((current) =>
+                            Array.from({ length: nextCount }, (_, index) => current[index] ?? { name: "", unitCount: 0 }),
+                          );
+                        }}
+                      />
+                    </div>
+                    {estateRows.map((estate, index) => (
+                      <div key={`estate-${index}`} className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor={`estate-name-${index}`}>Estate {index + 1} Name</Label>
+                          <Input
+                            id={`estate-name-${index}`}
+                            value={estate.name}
+                            className="h-11 rounded-xl border-[#dccfb9] bg-white focus-visible:ring-amber-600"
+                            onChange={(event) =>
+                              setRequestedEstates((current) =>
+                                current.map((entry, entryIndex) =>
+                                  entryIndex === index ? { ...entry, name: event.target.value } : entry,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
+                        {role === "CARETAKER" ? (
+                          <div className="space-y-2">
+                            <Label htmlFor={`estate-unit-count-${index}`}>How many vacant houses are there?</Label>
+                            <Input
+                              id={`estate-unit-count-${index}`}
+                              type="number"
+                              min={0}
+                              value={estate.unitCount ?? 0}
+                              className="h-11 rounded-xl border-[#dccfb9] bg-white focus-visible:ring-amber-600"
+                              onChange={(event) =>
+                                setRequestedEstates((current) =>
+                                  current.map((entry, entryIndex) =>
+                                    entryIndex === index
+                                      ? { ...entry, unitCount: Math.max(0, Number(event.target.value || 0)) }
+                                      : entry,
+                                  ),
+                                )
+                              }
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                    {estateError ? <p className="text-xs text-red-600">{estateError}</p> : null}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="estateOfInterest">Estate of Interest</Label>
+                    <Input
+                      id="estateOfInterest"
+                      className="h-11 rounded-xl border-[#dccfb9] bg-[#fffdf9] focus-visible:ring-amber-600"
+                      {...register("estateOfInterest")}
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="message">Message</Label>
                   <Textarea

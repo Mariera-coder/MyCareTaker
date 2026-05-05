@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { HousesService } from './houses.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -17,7 +25,10 @@ export class HousesController {
 
   @Post()
   @Roles(Role.ADMIN)
-  createHouse(@Body() dto: CreateHouseDto, @CurrentUser() user: AuthenticatedUser) {
+  createHouse(
+    @Body() dto: CreateHouseDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.housesService.createHouse(dto, user);
   }
 
@@ -28,7 +39,10 @@ export class HousesController {
   }
 
   @Get('estate/:estateId')
-  listByEstate(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  listByEstate(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.housesService.listByEstate(estateId, user);
   }
 
@@ -58,7 +72,10 @@ export class HousesController {
 
   @Post(':houseId/vacate')
   @Roles(Role.ADMIN)
-  vacateTenant(@Param('houseId') houseId: string, @CurrentUser() user: AuthenticatedUser) {
+  vacateTenant(
+    @Param('houseId') houseId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.housesService.vacateTenant(houseId, user.id);
   }
 

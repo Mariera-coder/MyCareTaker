@@ -71,7 +71,9 @@ export class UsersService {
     });
   }
 
-  async findOne(id: string): Promise<Omit<User, 'password_hash' | 'refresh_token_hash'>> {
+  async findOne(
+    id: string,
+  ): Promise<Omit<User, 'password_hash' | 'refresh_token_hash'>> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -101,9 +103,38 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    if (user.role === Role.TENANT) {
+      const activeTenancy = await this.prisma.tenancy.findFirst({
+        where: {
+          tenantId: user.id,
+          endDate: null,
+        },
+        select: { id: true },
+      });
+
+      if (activeTenancy) {
+        throw new ConflictException(
+          'Tenant still has an active house assignment. Vacate the tenant first.',
+        );
+      }
+    }
+
+    if (user.role === Role.CARETAKER) {
+      const activeAssignments = await this.prisma.caretakerEstate.findFirst({
+        where: { user_id: user.id },
+        select: { id: true },
+      });
+
+      if (activeAssignments) {
+        throw new ConflictException(
+          'Caretaker is still assigned to an estate. Switch or remove the assignment first.',
+        );
+      }
+    }
+
     await this.prisma.user.update({
       where: { id },
-      data: { is_active: false },
+      data: { is_active: false, refresh_token_hash: null },
     });
 
     return { message: 'User deactivated' };

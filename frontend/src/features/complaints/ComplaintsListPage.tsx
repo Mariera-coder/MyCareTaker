@@ -1,7 +1,6 @@
 import { useAppSelector } from "@/app/hooks";
 import { useGetComplaintsByEstateQuery, useGetComplaintsByTenantQuery } from "@/features/complaints/complaintsApi";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ComplaintPanel } from "@/features/complaints/ComplaintPanel";
 
 export function ComplaintsListPage() {
   const { user, tenantContext, selectedEstateId } = useAppSelector((state) => state.auth);
@@ -25,33 +24,15 @@ export function ComplaintsListPage() {
         </p>
       </div>
 
-      {complaints.map((complaint) => (
-        <Card key={complaint.id}>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>{complaint.house.name}</CardTitle>
-            <Badge
-              variant={
-                complaint.status === "OWNER_APPROVED"
-                  ? "success"
-                  : complaint.status === "CARETAKER_REVIEW"
-                    ? "warning"
-                    : complaint.status === "RESOLVED"
-                      ? "success"
-                      : "outline"
-              }
-            >
-              {complaint.status}
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>{complaint.description}</p>
-            <p>Tenant: {complaint.tenancy.tenant.first_name} {complaint.tenancy.tenant.last_name}</p>
-            <p>Deductible: {complaint.isDeductibleExpense ? "Yes" : "No"}</p>
-            <p>Estimated Cost: {complaint.estimatedCost ?? "-"}</p>
-            <p>Approved Cost: {complaint.approvedCost ?? "-"}</p>
-          </CardContent>
-        </Card>
-      ))}
+      {complaints.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">
+          No complaints have been recorded for this view yet.
+        </div>
+      ) : (
+        complaints.map((complaint) => (
+          <ComplaintPanel key={complaint.id} complaint={complaint} showEstate={user?.role !== "TENANT"} />
+        ))
+      )}
     </div>
   );
 }

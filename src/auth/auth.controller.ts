@@ -35,10 +35,7 @@ export class AuthController {
   }
 
   @Get('csrf')
-  getCsrfToken(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  getCsrfToken(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const csrfToken = this.authService.ensureCsrfCookie(req, res);
     return { csrfToken };
   }

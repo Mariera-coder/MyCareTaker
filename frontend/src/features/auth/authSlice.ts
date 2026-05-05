@@ -48,7 +48,6 @@ function applySession(state: AuthState, session: AuthSession) {
   state.role = session.role;
   state.availableEstates = session.estates;
   state.tenantContext = session.tenantContext;
-  state.nextRoute = session.nextRoute;
   state.sessionChecked = true;
 
   if (
@@ -58,6 +57,20 @@ function applySession(state: AuthState, session: AuthSession) {
     state.selectedEstateId = null;
     persistSelectedEstateId(null);
   }
+
+  if (
+    !state.selectedEstateId &&
+    session.estates.length === 1 &&
+    ["CARETAKER", "OWNER"].includes(session.role)
+  ) {
+    state.selectedEstateId = session.estates[0].id;
+    persistSelectedEstateId(session.estates[0].id);
+  }
+
+  state.nextRoute =
+    ["CARETAKER", "OWNER"].includes(session.role) && state.selectedEstateId
+      ? '/dashboard'
+      : session.nextRoute;
 }
 
 const authSlice = createSlice({

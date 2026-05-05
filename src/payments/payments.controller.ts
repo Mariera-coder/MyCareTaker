@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -7,6 +16,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser, Role } from '../common/types';
 import { SubmitPaymentDto } from './dto/submit-payment.dto';
 import { RejectPaymentDto } from './dto/reject-payment.dto';
+import { IssueCaretakerSalaryDto } from './dto/issue-caretaker-salary.dto';
 
 @Controller('payments')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -21,8 +31,16 @@ export class PaymentsController {
 
   @Post('tenant')
   @Roles(Role.TENANT)
-  submitPayment(@CurrentUser() user: AuthenticatedUser, @Body() dto: SubmitPaymentDto) {
-    return this.paymentsService.submitPayment(user.id, dto.amount, dto.weekNumber, dto.note);
+  submitPayment(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SubmitPaymentDto,
+  ) {
+    return this.paymentsService.submitPayment(
+      user.id,
+      dto.amount,
+      dto.weekNumber,
+      dto.note,
+    );
   }
 
   @Get('estate/:estateId/dashboard')
@@ -31,12 +49,19 @@ export class PaymentsController {
     @Param('estateId') estateId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.paymentsService.getEstateDashboard(estateId, user.id, user.role);
+    return this.paymentsService.getEstateDashboard(
+      estateId,
+      user.id,
+      user.role,
+    );
   }
 
   @Get('estate/:estateId/pending')
   @Roles(Role.CARETAKER)
-  listPendingPayments(@Param('estateId') estateId: string, @CurrentUser() user: AuthenticatedUser) {
+  listPendingPayments(
+    @Param('estateId') estateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.paymentsService.listPendingPayments(estateId, user.id);
   }
 
@@ -55,7 +80,10 @@ export class PaymentsController {
 
   @Patch(':paymentId/confirm')
   @Roles(Role.CARETAKER)
-  confirmPayment(@Param('paymentId') paymentId: string, @CurrentUser() user: AuthenticatedUser) {
+  confirmPayment(
+    @Param('paymentId') paymentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.paymentsService.confirmPayment(paymentId, user.id);
   }
 
@@ -83,6 +111,24 @@ export class PaymentsController {
       user.role,
       Number(month),
       Number(year),
+    );
+  }
+
+  @Post('estate/:estateId/caretaker-salaries')
+  @Roles(Role.OWNER, Role.ADMIN)
+  issueCaretakerSalary(
+    @Param('estateId') estateId: string,
+    @Body() dto: IssueCaretakerSalaryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.paymentsService.issueCaretakerSalary(
+      estateId,
+      user.id,
+      user.role,
+      dto.amount,
+      dto.month,
+      dto.year,
+      dto.note,
     );
   }
 }

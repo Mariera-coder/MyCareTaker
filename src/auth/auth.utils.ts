@@ -133,8 +133,4 @@ export function ensureCsrfCookie(
   return token;
 }
 
-export {
-  ACCESS_TOKEN_COOKIE,
-  CSRF_TOKEN_COOKIE,
-  REFRESH_TOKEN_COOKIE,
-};
+export { ACCESS_TOKEN_COOKIE, CSRF_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE };

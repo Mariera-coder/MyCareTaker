@@ -1,33 +1,33 @@
 import {
-    IsEmail,
-    IsEnum,
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MinLength,
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
 } from 'class-validator';
 import { Role } from '../../common/types';
 
 export class CreateUserDto {
-    @IsEmail()
-    email!: string;
+  @IsEmail()
+  email!: string;
 
-    @IsString()
-    @MinLength(8)
-    password!: string;
+  @IsString()
+  @MinLength(8)
+  password!: string;
 
-    @IsString()
-    @IsNotEmpty()
-    first_name!: string;
+  @IsString()
+  @IsNotEmpty()
+  first_name!: string;
 
-    @IsString()
-    @IsNotEmpty()
-    last_name!: string;
+  @IsString()
+  @IsNotEmpty()
+  last_name!: string;
 
-    @IsOptional()
-    @IsString()
-    phone?: string;
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
-    @IsEnum(Role)
-    role!: Role;
+  @IsEnum(Role)
+  role!: Role;
 }

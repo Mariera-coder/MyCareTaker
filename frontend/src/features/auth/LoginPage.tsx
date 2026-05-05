@@ -53,7 +53,14 @@ export function LoginPage() {
 
   const onSubmit = async (values: LoginFormData) => {
     const response = await login(values).unwrap();
-    navigate(response.session.nextRoute);
+    const savedEstateId =
+      typeof window !== "undefined" ? window.localStorage.getItem("mycaretaker_selected_estate") : null;
+    const hasSavedEstate =
+      !!savedEstateId && response.session.estates.some((estate) => estate.id === savedEstateId);
+    const hasSingleEstate =
+      ["CARETAKER", "OWNER"].includes(response.session.role) && response.session.estates.length === 1;
+
+    navigate(hasSavedEstate || hasSingleEstate ? "/dashboard" : response.session.nextRoute);
   };
 
   return (

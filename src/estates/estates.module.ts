@@ -3,8 +3,8 @@ import { EstatesController } from './estates.controller';
 import { EstatesService } from './estates.service';
 
 @Module({
-    controllers: [EstatesController],
-    providers: [EstatesService],
-    exports: [EstatesService],
+  controllers: [EstatesController],
+  providers: [EstatesService],
+  exports: [EstatesService],
 })
-export class EstatesModule { }
+export class EstatesModule {}

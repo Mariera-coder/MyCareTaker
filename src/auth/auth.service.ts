@@ -25,6 +25,10 @@ import {
   ensureCsrfCookie,
   setAuthCookies,
 } from './auth.utils';
+import {
+  parseEstateRequest,
+  serializeEstateRequest,
+} from './pending-registration-estates';
 
 const BCRYPT_SALT_ROUNDS = 12;
 
@@ -55,7 +59,9 @@ export class AuthService {
     });
 
     if (existingPending) {
-      throw new BadRequestException('A pending registration already exists for this email');
+      throw new BadRequestException(
+        'A pending registration already exists for this email',
+      );
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
@@ -67,7 +73,10 @@ export class AuthService {
         email: dto.email,
         passwordHash,
         role: dto.role,
-        estateOfInterest: dto.estateOfInterest,
+        estateOfInterest: serializeEstateRequest({
+          requestedEstates: dto.requestedEstates ?? [],
+          tenantEstateOfInterest: dto.estateOfInterest,
+        }),
         message: dto.message,
         status: RegistrationStatus.AWAITING_ADMIN,
       },
@@ -99,7 +108,10 @@ export class AuthService {
       );
     }
 
-    const passwordValid = await bcrypt.compare(dto.password, user.password_hash);
+    const passwordValid = await bcrypt.compare(
+      dto.password,
+      user.password_hash,
+    );
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -267,6 +279,8 @@ export class AuthService {
     }
 
     if (user.role === Role.CARETAKER) {
+      await this.syncApprovedRegistrationAccess(user.id, user.email, user.role);
+
       const assignments = await this.prisma.caretakerEstate.findMany({
         where: { user_id: user.id },
         include: {
@@ -287,6 +301,8 @@ export class AuthService {
     }
 
     if (user.role === Role.OWNER) {
+      await this.syncApprovedRegistrationAccess(user.id, user.email, user.role);
+
       const estates = await this.prisma.estate.findMany({
         where: { owner_id: user.id },
         select: { id: true, name: true, address: true, city: true },
@@ -335,9 +351,10 @@ export class AuthService {
     dto: ApprovePendingRegistrationDto,
     adminId: string,
   ) {
-    const pendingRegistration = await this.prisma.pendingRegistration.findUnique({
-      where: { id: registrationId },
-    });
+    const pendingRegistration =
+      await this.prisma.pendingRegistration.findUnique({
+        where: { id: registrationId },
+      });
 
     if (!pendingRegistration) {
       throw new NotFoundException('Pending registration not found');
@@ -347,15 +364,23 @@ export class AuthService {
       throw new BadRequestException('Registration has already been reviewed');
     }
 
-    if (pendingRegistration.role === PendingRegistrationRole.TENANT && !dto.houseId) {
+    if (
+      pendingRegistration.role === PendingRegistrationRole.TENANT &&
+      !dto.houseId
+    ) {
       throw new BadRequestException(
         'A house assignment is required when approving a tenant',
       );
     }
 
-    const { firstName, lastName } = this.splitName(pendingRegistration.fullName);
+    const { firstName, lastName } = this.splitName(
+      pendingRegistration.fullName,
+    );
     const email = dto.email ?? pendingRegistration.email;
     const passwordHash = pendingRegistration.passwordHash;
+    const estateRequest = parseEstateRequest(
+      pendingRegistration.estateOfInterest,
+    );
 
     const result = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -385,7 +410,9 @@ export class AuthService {
         });
 
         if (activeTenancy) {
-          throw new BadRequestException('Selected house already has an active tenancy');
+          throw new BadRequestException(
+            'Selected house already has an active tenancy',
+          );
         }
 
         await tx.tenancy.create({
@@ -406,25 +433,83 @@ export class AuthService {
 
       if (
         pendingRegistration.role === PendingRegistrationRole.CARETAKER &&
-        dto.estateIds?.length
+        (dto.estateIds?.length || estateRequest.requestedEstates.length)
       ) {
-        await tx.caretakerEstate.createMany({
-          data: dto.estateIds.map((estateId) => ({
-            user_id: user.id,
-            estate_id: estateId,
-          })),
-          skipDuplicates: true,
-        });
+        const caretakerEstateIds = dto.estateIds?.length
+          ? dto.estateIds
+          : await this.resolveEstateIdsByRequest(
+              tx,
+              estateRequest.requestedEstates.map((estate) => estate.name),
+            );
+
+        if (caretakerEstateIds.length) {
+          await tx.caretakerEstate.createMany({
+            data: caretakerEstateIds.map((estateId) => ({
+              user_id: user.id,
+              estate_id: estateId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        for (const requestedEstate of estateRequest.requestedEstates) {
+          if (!requestedEstate.unitCount) {
+            continue;
+          }
+
+          const estate = await tx.estate.findFirst({
+            where: {
+              name: { equals: requestedEstate.name, mode: 'insensitive' },
+            },
+            select: { id: true },
+          });
+
+          if (estate) {
+            await this.ensureEstateHouses(
+              tx,
+              estate.id,
+              requestedEstate.unitCount,
+            );
+          }
+        }
       }
 
       if (
         pendingRegistration.role === PendingRegistrationRole.OWNER &&
-        dto.estateIds?.length
+        (dto.estateIds?.length || estateRequest.requestedEstates.length)
       ) {
-        await tx.estate.updateMany({
-          where: { id: { in: dto.estateIds } },
-          data: { owner_id: user.id },
-        });
+        if (dto.estateIds?.length) {
+          await tx.estate.updateMany({
+            where: { id: { in: dto.estateIds } },
+            data: { owner_id: user.id },
+          });
+        } else {
+          for (const requestedEstate of estateRequest.requestedEstates) {
+            const existingEstate = await tx.estate.findFirst({
+              where: {
+                name: { equals: requestedEstate.name, mode: 'insensitive' },
+              },
+              select: { id: true },
+            });
+
+            if (existingEstate) {
+              await tx.estate.update({
+                where: { id: existingEstate.id },
+                data: { owner_id: user.id },
+              });
+              continue;
+            }
+
+            await tx.estate.create({
+              data: {
+                name: requestedEstate.name,
+                address: 'Pending setup',
+                city: 'Pending setup',
+                owner_id: user.id,
+              },
+            });
+          }
+        }
       }
 
       await tx.pendingRegistration.update({
@@ -454,10 +539,11 @@ export class AuthService {
     reason: string,
     adminId: string,
   ) {
-    const pendingRegistration = await this.prisma.pendingRegistration.findUnique({
-      where: { id: registrationId },
-      select: { id: true, status: true, message: true },
-    });
+    const pendingRegistration =
+      await this.prisma.pendingRegistration.findUnique({
+        where: { id: registrationId },
+        select: { id: true, status: true, message: true },
+      });
 
     if (!pendingRegistration) {
       throw new NotFoundException('Pending registration not found');
@@ -486,11 +572,15 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwt.signAsync(payload, {
         secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-        expiresIn: this.config.getOrThrow<string>('JWT_ACCESS_EXPIRATION') as never,
+        expiresIn: this.config.getOrThrow<string>(
+          'JWT_ACCESS_EXPIRATION',
+        ) as never,
       }),
       this.jwt.signAsync(payload, {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.config.getOrThrow<string>('JWT_REFRESH_EXPIRATION') as never,
+        expiresIn: this.config.getOrThrow<string>(
+          'JWT_REFRESH_EXPIRATION',
+        ) as never,
       }),
     ]);
 
@@ -518,4 +608,151 @@ export class AuthService {
     return { firstName, lastName };
   }
 
+  private async resolveEstateIdsByRequest(
+    tx: Prisma.TransactionClient,
+    estateNames: string[],
+  ) {
+    const ids: string[] = [];
+
+    for (const estateName of estateNames) {
+      const estate = await tx.estate.findFirst({
+        where: { name: { equals: estateName, mode: 'insensitive' } },
+        select: { id: true },
+      });
+
+      if (estate) {
+        ids.push(estate.id);
+      }
+    }
+
+    return ids;
+  }
+
+  private async ensureEstateHouses(
+    tx: Prisma.TransactionClient,
+    estateId: string,
+    requestedUnitCount: number,
+  ) {
+    const existingHouses = await tx.house.findMany({
+      where: { estateId },
+      select: { name: true },
+    });
+
+    const existingHouseNames = new Set(
+      existingHouses.map((house) => house.name),
+    );
+    const missingHouses = [];
+
+    for (let index = 1; index <= requestedUnitCount; index += 1) {
+      const houseName = `House ${index}`;
+      if (!existingHouseNames.has(houseName)) {
+        missingHouses.push({
+          estateId,
+          name: houseName,
+          rentAmount: new Prisma.Decimal(0),
+        });
+      }
+    }
+
+    if (missingHouses.length) {
+      await tx.house.createMany({
+        data: missingHouses,
+        skipDuplicates: true,
+      });
+    }
+  }
+
+  private async syncApprovedRegistrationAccess(
+    userId: string,
+    email: string | null,
+    role: Role,
+  ) {
+    if (!email) {
+      return;
+    }
+
+    const pendingRegistration = await this.prisma.pendingRegistration.findFirst({
+      where: {
+        email,
+        role:
+          role === Role.OWNER
+            ? PendingRegistrationRole.OWNER
+            : PendingRegistrationRole.CARETAKER,
+        status: RegistrationStatus.APPROVED,
+      },
+      orderBy: { reviewedAt: 'desc' },
+      select: { estateOfInterest: true },
+    });
+
+    if (!pendingRegistration?.estateOfInterest) {
+      return;
+    }
+
+    const estateRequest = parseEstateRequest(pendingRegistration.estateOfInterest);
+    if (!estateRequest.requestedEstates.length) {
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (role === Role.OWNER) {
+        for (const requestedEstate of estateRequest.requestedEstates) {
+          const existingEstate = await tx.estate.findFirst({
+            where: { name: { equals: requestedEstate.name, mode: 'insensitive' } },
+            select: { id: true, owner_id: true },
+          });
+
+          if (existingEstate) {
+            if (existingEstate.owner_id !== userId) {
+              await tx.estate.update({
+                where: { id: existingEstate.id },
+                data: { owner_id: userId },
+              });
+            }
+            continue;
+          }
+
+          await tx.estate.create({
+            data: {
+              name: requestedEstate.name,
+              address: 'Pending setup',
+              city: 'Pending setup',
+              owner_id: userId,
+            },
+          });
+        }
+
+        return;
+      }
+
+      const estateIds = await this.resolveEstateIdsByRequest(
+        tx,
+        estateRequest.requestedEstates.map((estate) => estate.name),
+      );
+
+      if (estateIds.length) {
+        await tx.caretakerEstate.createMany({
+          data: estateIds.map((estateId) => ({
+            user_id: userId,
+            estate_id: estateId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      for (const requestedEstate of estateRequest.requestedEstates) {
+        if (!requestedEstate.unitCount) {
+          continue;
+        }
+
+        const estate = await tx.estate.findFirst({
+          where: { name: { equals: requestedEstate.name, mode: 'insensitive' } },
+          select: { id: true },
+        });
+
+        if (estate) {
+          await this.ensureEstateHouses(tx, estate.id, requestedEstate.unitCount);
+        }
+      }
+    });
+  }
 }

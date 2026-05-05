@@ -9,7 +9,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../common/types';
 import { CreateComplaintDto } from './dto/create-complaint.dto';
 import { CaretakerReviewComplaintDto } from './dto/caretaker-review-complaint.dto';
-import { OwnerReviewComplaintDto, OwnerReviewDecision } from './dto/owner-review-complaint.dto';
+import {
+  OwnerReviewComplaintDto,
+  OwnerReviewDecision,
+} from './dto/owner-review-complaint.dto';
 
 @Injectable()
 export class ComplaintsService {
@@ -41,7 +44,9 @@ export class ComplaintsService {
 
     if (user.role === Role.CARETAKER) {
       if (!data.houseId) {
-        throw new BadRequestException('houseId is required for caretaker complaint submission');
+        throw new BadRequestException(
+          'houseId is required for caretaker complaint submission',
+        );
       }
 
       const house = await this.prisma.house.findUnique({
@@ -77,7 +82,9 @@ export class ComplaintsService {
       });
     }
 
-    throw new ForbiddenException('Only tenants or caretakers can submit complaints');
+    throw new ForbiddenException(
+      'Only tenants or caretakers can submit complaints',
+    );
   }
 
   async caretakerReview(
@@ -102,7 +109,8 @@ export class ComplaintsService {
     return this.prisma.complaint.update({
       where: { id: complaintId },
       data: {
-        isDeductibleExpense: data.isDeductibleExpense ?? complaint.isDeductibleExpense,
+        isDeductibleExpense:
+          data.isDeductibleExpense ?? complaint.isDeductibleExpense,
         estimatedCost:
           data.estimatedCost === undefined
             ? complaint.estimatedCost
@@ -186,7 +194,9 @@ export class ComplaintsService {
     }
 
     if (user.role === Role.OWNER) {
-      return complaints.filter((complaint) => complaint.estate.owner_id === user.id);
+      return complaints.filter(
+        (complaint) => complaint.estate.owner_id === user.id,
+      );
     }
 
     return complaints;
@@ -240,7 +250,12 @@ export class ComplaintsService {
       tenancy: {
         include: {
           tenant: {
-            select: { id: true, first_name: true, last_name: true, phone: true },
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              phone: true,
+            },
           },
         },
       },

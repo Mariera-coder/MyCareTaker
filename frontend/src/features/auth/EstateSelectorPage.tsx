@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export function EstateSelectorPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { user, availableEstates } = useAppSelector((state) => state.auth);
+  const { user, availableEstates, selectedEstateId } = useAppSelector((state) => state.auth);
 
   const title = useMemo(() => {
     if (user?.role === "CARETAKER") {
@@ -25,6 +25,13 @@ export function EstateSelectorPage() {
   }
 
   if (!["CARETAKER", "OWNER"].includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (
+    selectedEstateId &&
+    availableEstates.some((estate) => estate.id === selectedEstateId)
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 

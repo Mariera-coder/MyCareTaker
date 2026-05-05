@@ -68,6 +68,8 @@ model User {
   // Relations
   owned_estates           Estate[]              @relation("EstateOwner")
   caretaker_estates       CaretakerEstate[]
+  caretaker_salary_payments_received CaretakerSalaryPayment[] @relation("CaretakerSalaryRecipient")
+  caretaker_salary_payments_issued   CaretakerSalaryPayment[] @relation("CaretakerSalaryIssuer")
   audit_logs              AuditLog[]
   tenancies               Tenancy[]
   complaints_filed        Complaint[]
@@ -84,6 +86,7 @@ model Estate {
   address    String
   city       String
   owner_id   String
+  monthlyCaretakerDeduction Decimal @default(0) @db.Decimal(12, 2)
   owner      User   @relation("EstateOwner", fields: [owner_id], references: [id], onDelete: Cascade)
 
   created_at DateTime @default(now())
@@ -93,9 +96,32 @@ model Estate {
   houses            House[]
   caretaker_estates CaretakerEstate[]
   complaints        Complaint[]
+  caretaker_salary_payments CaretakerSalaryPayment[]
 
   @@index([owner_id])
   @@map("estates")
+}
+
+model CaretakerSalaryPayment {
+  id              String   @id @default(uuid())
+  estate_id       String
+  caretaker_user_id String?
+  paid_by_owner_id String
+  salary_month_year String
+  amount          Decimal  @db.Decimal(12, 2)
+  note            String?
+  paid_at         DateTime @default(now())
+  created_at      DateTime @default(now())
+
+  estate          Estate   @relation(fields: [estate_id], references: [id], onDelete: Cascade)
+  caretaker       User?    @relation("CaretakerSalaryRecipient", fields: [caretaker_user_id], references: [id], onDelete: SetNull)
+  paid_by_owner   User     @relation("CaretakerSalaryIssuer", fields: [paid_by_owner_id], references: [id], onDelete: Restrict)
+
+  @@index([estate_id])
+  @@index([salary_month_year])
+  @@index([caretaker_user_id])
+  @@index([paid_by_owner_id])
+  @@map("caretaker_salary_payments")
 }
 
 model CaretakerEstate {

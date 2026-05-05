@@ -8,9 +8,26 @@ export interface CreateEstateRequest {
   owner_user_id: string;
 }
 
+export interface UpdateEstateFinancialSettingsRequest {
+  estateId: string;
+  monthlyCaretakerDeduction: number;
+}
+
+export interface EstateFinancialSettingsResponse {
+  message: string;
+  monthlyCaretakerDeduction: number;
+}
+
 export interface AssignCaretakerRequest {
   estateId: string;
   user_id: string;
+}
+
+export interface ReplaceCaretakerRequest {
+  estateId: string;
+  outgoing_user_id: string;
+  incoming_user_id: string;
+  deactivateOutgoing?: boolean;
 }
 
 export const estatesApi = apiClient.injectEndpoints({
@@ -39,6 +56,22 @@ export const estatesApi = apiClient.injectEndpoints({
       }),
       invalidatesTags: ["Estates"],
     }),
+    replaceCaretaker: builder.mutation<{ message: string }, ReplaceCaretakerRequest>({
+      query: ({ estateId, ...body }) => ({
+        url: `/estates/${estateId}/caretakers/replace`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Estates", "Users", "Reports"],
+    }),
+    updateEstateFinancialSettings: builder.mutation<EstateFinancialSettingsResponse, UpdateEstateFinancialSettingsRequest>({
+      query: ({ estateId, monthlyCaretakerDeduction }) => ({
+        url: `/estates/${estateId}/financial-settings`,
+        method: "PATCH",
+        body: { monthlyCaretakerDeduction },
+      }),
+      invalidatesTags: ["Estates", "Reports"],
+    }),
   }),
 });
 
@@ -47,4 +80,6 @@ export const {
   useGetEstateByIdQuery,
   useCreateEstateMutation,
   useAssignCaretakerMutation,
+  useReplaceCaretakerMutation,
+  useUpdateEstateFinancialSettingsMutation,
 } = estatesApi;

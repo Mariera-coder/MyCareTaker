@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { clearAuth, setSession } from "@/features/auth/authSlice";
 import type { AuthSession, AuthSessionResponse, AvailableHouse, PendingRegistration, PendingRegistrationRole } from "@/lib/types";
+import type { RequestedEstate } from "@/features/auth/estateRequest";
 
 export interface LoginRequest {
   email: string;
@@ -14,6 +15,7 @@ export interface RegisterRequest {
   password: string;
   role: PendingRegistrationRole;
   estateOfInterest?: string;
+  requestedEstates?: RequestedEstate[];
   message?: string;
 }
 

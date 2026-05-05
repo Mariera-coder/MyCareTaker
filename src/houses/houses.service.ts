@@ -77,7 +77,9 @@ export class HousesService {
       throw new ForbiddenException('Only admins can update rent amount');
     }
 
-    const house = await this.prisma.house.findUnique({ where: { id: houseId } });
+    const house = await this.prisma.house.findUnique({
+      where: { id: houseId },
+    });
 
     if (!house) {
       throw new NotFoundException('House not found');
@@ -169,7 +171,10 @@ export class HousesService {
 
       if (currentRecord && delta !== 0) {
         const amountDue = Math.max(Number(currentRecord.amountDue) + delta, 0);
-        const deficit = Math.max(amountDue - Number(currentRecord.amountPaid), 0);
+        const deficit = Math.max(
+          amountDue - Number(currentRecord.amountPaid),
+          0,
+        );
         await tx.rentRecord.update({
           where: { id: currentRecord.id },
           data: {
@@ -251,7 +256,9 @@ export class HousesService {
       throw new ForbiddenException('Only admins can register tenants');
     }
 
-    const house = await this.prisma.house.findUnique({ where: { id: dto.houseId } });
+    const house = await this.prisma.house.findUnique({
+      where: { id: dto.houseId },
+    });
     if (!house) {
       throw new NotFoundException('House not found');
     }
@@ -269,7 +276,8 @@ export class HousesService {
 
     const { firstName, lastName } = this.splitName(dto.fullName);
     const password = this.generateTemporaryPassword();
-    const email = dto.email ?? (await this.generateEmail(dto.fullName, dto.phone));
+    const email =
+      dto.email ?? (await this.generateEmail(dto.fullName, dto.phone));
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
     const user = await this.prisma.$transaction(async (tx) => {
@@ -352,11 +360,19 @@ export class HousesService {
   }
 
   private async generateEmail(fullName: string, phone: string) {
-    const safe = fullName.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+    const safe = fullName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '.')
+      .replace(/^\.+|\.+$/g, '');
     const digits = phone.replace(/\D/g, '').slice(-4) || 'user';
     let candidate = `${safe || 'tenant'}.${digits}@mycaretaker.local`;
     let suffix = 1;
-    while (await this.prisma.user.findFirst({ where: { email: candidate }, select: { id: true } })) {
+    while (
+      await this.prisma.user.findFirst({
+        where: { email: candidate },
+        select: { id: true },
+      })
+    ) {
       candidate = `${safe || 'tenant'}.${digits}.${suffix}@mycaretaker.local`;
       suffix += 1;
     }
@@ -369,13 +385,19 @@ export class HousesService {
 
   private getBillingCycleMonthYear(date: Date, billingAnchorDay: number) {
     const currentDay = date.getUTCDate();
-    const base = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+    const base = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1),
+    );
     const targetMonthDate =
       currentDay >= billingAnchorDay
         ? base
         : new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - 1, 1));
     const daysInMonth = new Date(
-      Date.UTC(targetMonthDate.getUTCFullYear(), targetMonthDate.getUTCMonth() + 1, 0),
+      Date.UTC(
+        targetMonthDate.getUTCFullYear(),
+        targetMonthDate.getUTCMonth() + 1,
+        0,
+      ),
     ).getUTCDate();
 
     return this.getMonthYear(

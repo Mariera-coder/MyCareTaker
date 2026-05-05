@@ -53,6 +53,40 @@ export interface Estate {
   owner_id: string;
   created_at: string;
   updated_at: string;
+  owner?: {
+    id: string;
+    email: string | null;
+    first_name: string;
+    last_name: string;
+  } | null;
+  caretaker_estates?: Array<{
+    id: string;
+    user_id: string;
+    user: {
+      id: string;
+      email: string | null;
+      first_name: string;
+      last_name: string;
+      phone?: string | null;
+    };
+  }>;
+  houses?: Array<{
+    id: string;
+    name: string;
+    rentAmount: string | number;
+    isOccupied: boolean;
+    tenancies?: Array<{
+      id: string;
+      endDate: string | null;
+      tenant: {
+        id: string;
+        email?: string | null;
+        first_name: string;
+        last_name: string;
+        phone?: string | null;
+      };
+    }>;
+  }>;
 }
 
 export interface AvailableHouse {
@@ -152,6 +186,7 @@ export interface EstateDashboard {
     occupiedUnits: number;
     vacantUnits: number;
     awaitingConfirmation: number;
+    currentMonthDeductibleExpenses: number;
     totalApprovedDeductibleExpenses: number;
   };
   rows: Array<{
@@ -204,6 +239,8 @@ export interface EstatePaymentConfirmation {
     houseId: string;
     houseName: string;
     isActive: boolean;
+    tenantIsActive: boolean;
+    tenancyEndDate: string | null;
     creditBalance: number;
     receipts: TenantReceipt[];
   }>;
@@ -263,12 +300,36 @@ export interface MonthlyReport {
   month: number;
   year: number;
   total_rent_collected: number;
+  complaint_deductions_total: number;
+  caretaker_salary_deduction: number;
   total_deductions: number;
   net_owner_payout: number;
   unassigned_deductions: number;
+  salary_payments: Array<{
+    id: string;
+    amount: number;
+    note: string | null;
+    paid_at: string;
+    salary_month_year: string;
+    caretaker_name: string | null;
+    paid_by_name: string | null;
+  }>;
+  monthly_collections: Array<{
+    month: number;
+    month_label: string;
+    total_rent_collected: number;
+    complaint_deductions_total: number;
+    caretaker_salary_deduction: number;
+    total_deductions: number;
+    net_owner_payout: number;
+  }>;
   units: Array<{
     unit_id: string;
     unit_number: string;
+    tenant_name: string | null;
+    tenant_is_active: boolean | null;
+    tenancy_is_active: boolean | null;
+    tenancy_end_date: string | null;
     monthly_rent: number;
     rent_collected: number;
     complaint_deductions: number;

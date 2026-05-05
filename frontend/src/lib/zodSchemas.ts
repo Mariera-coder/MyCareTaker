@@ -13,6 +13,14 @@ export const registrationRequestSchema = z.object({
   confirmPassword: z.string().min(8),
   role: z.enum(["TENANT", "CARETAKER", "OWNER"]),
   estateOfInterest: z.string().optional(),
+  requestedEstates: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        unitCount: z.number().int().min(0).optional(),
+      }),
+    )
+    .optional(),
   message: z.string().optional(),
 }).refine((value) => value.password === value.confirmPassword, {
   message: "Passwords do not match",

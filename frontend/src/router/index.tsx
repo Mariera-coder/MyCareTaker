@@ -46,14 +46,17 @@ export function AppRouter() {
       <Route element={<ProtectedRoute allow={["CARETAKER"]} />}>
         <Route element={<ShellLayout />}>
           <Route path="/complaints/caretaker-review" element={<CaretakerReviewPage />} />
-          <Route path="/rent-confirmations" element={<ApprovedRentConfirmationPage />} />
-          <Route path="/reports/monthly" element={<MonthlyReportPage />} />
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute allow={["OWNER"]} />}>
         <Route element={<ShellLayout />}>
           <Route path="/complaints/owner-approval" element={<OwnerApprovalPage />} />
+        </Route>
+      </Route>
+
+      <Route element={<ProtectedRoute allow={["CARETAKER", "OWNER"]} />}>
+        <Route element={<ShellLayout />}>
           <Route path="/rent-confirmations" element={<ApprovedRentConfirmationPage />} />
           <Route path="/reports/monthly" element={<MonthlyReportPage />} />
         </Route>

@@ -50,7 +50,9 @@ export function ApprovedRentConfirmationPage() {
           Approved Rent Confirmation{selectedEstate ? ` · ${selectedEstate.name}` : ""}
         </h1>
         <p className="text-sm text-slate-600">
-          Review pending payments and open each tenant&apos;s receipt history in one place.
+          {user.role === "CARETAKER"
+            ? "Review pending payments and open each tenant's receipt history in one place."
+            : "Read-only rent confirmation history for the selected estate, including former and disabled tenants."}
         </p>
       </div>
 
@@ -123,9 +125,17 @@ export function ApprovedRentConfirmationPage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium text-slate-900">{tenant.tenantName}</p>
-                  {!tenant.isActive ? <Badge variant="outline">Former</Badge> : null}
+                  <div className="flex flex-wrap gap-2">
+                    {!tenant.isActive ? <Badge variant="warning">Former</Badge> : <Badge variant="success">Active</Badge>}
+                    {!tenant.tenantIsActive ? <Badge variant="destructive">Disabled</Badge> : null}
+                  </div>
                 </div>
                 <p className="text-sm text-slate-600">{tenant.houseName}</p>
+                {tenant.tenancyEndDate ? (
+                  <p className="mt-1 text-xs text-amber-700">
+                    Vacated on {new Date(tenant.tenancyEndDate).toLocaleDateString()}
+                  </p>
+                ) : null}
                 {tenant.creditBalance > 0 ? (
                   <p className="mt-1 text-xs font-medium text-emerald-700">
                     Credit available: {formatKes(tenant.creditBalance)}
@@ -147,6 +157,8 @@ export function ApprovedRentConfirmationPage() {
                   <p>House: {selectedTenant.houseName}</p>
                   <p>Phone: {selectedTenant.tenantPhone ?? "No phone provided"}</p>
                   <p className="md:col-span-2">Email: {selectedTenant.tenantEmail ?? "No email provided"}</p>
+                  <p>Status: {selectedTenant.isActive ? "Active tenancy" : "Former tenancy"}</p>
+                  <p>Account: {selectedTenant.tenantIsActive ? "Enabled" : "Disabled"}</p>
                 </div>
 
                 {selectedTenant.receipts.length === 0 ? (

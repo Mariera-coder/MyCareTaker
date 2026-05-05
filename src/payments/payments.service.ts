@@ -4,8 +4,26 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PaymentType, Prisma, RentRecordStatus, Role } from '@prisma/client';
+import {
+  ComplaintStatus,
+  PaymentType,
+  Prisma,
+  RentRecordStatus,
+  Role,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+
+type CaretakerSalaryPaymentRow = {
+  id: string;
+  amount: Prisma.Decimal;
+  note: string | null;
+  paid_at: Date;
+  salary_month_year: string;
+  caretaker_first_name: string | null;
+  caretaker_last_name: string | null;
+  paid_by_first_name: string | null;
+  paid_by_last_name: string | null;
+};
 
 @Injectable()
 export class PaymentsService {
@@ -16,7 +34,10 @@ export class PaymentsService {
     await this.ensureMonthlyRecords(tenancy.id);
 
     const billingAnchorDay = tenancy.startDate.getUTCDate();
-    const monthYear = this.getBillingCycleMonthYear(new Date(), billingAnchorDay);
+    const monthYear = this.getBillingCycleMonthYear(
+      new Date(),
+      billingAnchorDay,
+    );
     const current = await this.prisma.rentRecord.findUnique({
       where: { tenancyId_monthYear: { tenancyId: tenancy.id, monthYear } },
     });
@@ -35,12 +56,23 @@ export class PaymentsService {
       },
     });
 
-    const previousMonth = this.getPreviousBillingCycleMonthYear(monthYear, billingAnchorDay);
+    const previousMonth = this.getPreviousBillingCycleMonthYear(
+      monthYear,
+      billingAnchorDay,
+    );
     const previousRecord = await this.prisma.rentRecord.findUnique({
-      where: { tenancyId_monthYear: { tenancyId: tenancy.id, monthYear: previousMonth } },
+      where: {
+        tenancyId_monthYear: {
+          tenancyId: tenancy.id,
+          monthYear: previousMonth,
+        },
+      },
     });
 
-    const confirmedWeekTotals = await this.getWeeklyTotals(tenancy.id, monthYear);
+    const confirmedWeekTotals = await this.getWeeklyTotals(
+      tenancy.id,
+      monthYear,
+    );
     const weeklyGoal = Number(current.amountDue) / 4;
 
     const caretakerAssignment = await this.prisma.caretakerEstate.findFirst({
@@ -83,7 +115,7 @@ export class PaymentsService {
           displayBalance:
             record.id === current.id
               ? Number(record.deficit)
-              : recordSettlement?.remainingBalance ?? Number(record.deficit),
+              : (recordSettlement?.remainingBalance ?? Number(record.deficit)),
           displayStatus:
             record.id === current.id
               ? record.status
@@ -91,12 +123,13 @@ export class PaymentsService {
                 ? RentRecordStatus.PAID
                 : record.status,
           pendingConfirmation: record.payments.some(
-            (payment) => !payment.confirmedByCaretaker && !payment.rejectedByCaretaker,
+            (payment) =>
+              !payment.confirmedByCaretaker && !payment.rejectedByCaretaker,
           ),
         };
       });
     const previousSettlement = previousRecord
-      ? settlement.recordsById.get(previousRecord.id) ?? null
+      ? (settlement.recordsById.get(previousRecord.id) ?? null)
       : null;
 
     return {
@@ -114,7 +147,8 @@ export class PaymentsService {
         amountPaidThisMonth: Number(current.amountPaid),
         outstandingBalance: Number(current.deficit),
         securityDepositAmount: Number(tenancy.securityDepositAmount),
-        includesSecurityDeposit: monthYear === this.getMonthYear(tenancy.startDate),
+        includesSecurityDeposit:
+          monthYear === this.getMonthYear(tenancy.startDate),
         baseRent: currentBreakdown.baseRent,
         carriedForward: currentBreakdown.carriedForward,
         securityDepositCharged: currentBreakdown.securityDepositCharged,
@@ -127,7 +161,9 @@ export class PaymentsService {
               previousSettlement?.remainingBalance === 0
                 ? RentRecordStatus.PAID
                 : previousRecord.status,
-            deficit: previousSettlement?.remainingBalance ?? Number(previousRecord.deficit),
+            deficit:
+              previousSettlement?.remainingBalance ??
+              Number(previousRecord.deficit),
           }
         : null,
       rentRecords: displayRecords,
@@ -139,23 +175,35 @@ export class PaymentsService {
           targetAmount: weeklyGoal,
           confirmedPaid,
           remaining: Math.max(weeklyGoal - confirmedPaid, 0),
-          progress: weeklyGoal > 0 ? Math.min((confirmedPaid / weeklyGoal) * 100, 100) : 0,
+          progress:
+            weeklyGoal > 0
+              ? Math.min((confirmedPaid / weeklyGoal) * 100, 100)
+              : 0,
         };
       }),
       paymentInstructions: caretakerAssignment
         ? {
-            caretakerName: `${caretakerAssignment.user.first_name} ${caretakerAssignment.user.last_name}`.trim(),
+            caretakerName:
+              `${caretakerAssignment.user.first_name} ${caretakerAssignment.user.last_name}`.trim(),
             caretakerPhoneNumber: caretakerAssignment.user.phone,
           }
         : null,
     };
   }
 
-  async submitPayment(userId: string, amount: number, weekNumber?: number, note?: string) {
+  async submitPayment(
+    userId: string,
+    amount: number,
+    weekNumber?: number,
+    note?: string,
+  ) {
     const tenancy = await this.getActiveTenancy(userId);
     await this.ensureMonthlyRecords(tenancy.id);
 
-    const monthYear = this.getBillingCycleMonthYear(new Date(), tenancy.startDate.getUTCDate());
+    const monthYear = this.getBillingCycleMonthYear(
+      new Date(),
+      tenancy.startDate.getUTCDate(),
+    );
     const rentRecord = await this.prisma.rentRecord.findUnique({
       where: { tenancyId_monthYear: { tenancyId: tenancy.id, monthYear } },
     });
@@ -194,7 +242,13 @@ export class PaymentsService {
           where: { endDate: null },
           include: {
             tenant: {
-              select: { id: true, first_name: true, last_name: true, phone: true, email: true },
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                phone: true,
+                email: true,
+              },
             },
             rentRecords: {
               orderBy: { monthYear: 'asc' },
@@ -218,7 +272,10 @@ export class PaymentsService {
     const rows = houses.map((house) => {
       const activeTenancy = house.tenancies[0] ?? null;
       const cycleMonthYear = activeTenancy
-        ? this.getBillingCycleMonthYear(new Date(), activeTenancy.startDate.getUTCDate())
+        ? this.getBillingCycleMonthYear(
+            new Date(),
+            activeTenancy.startDate.getUTCDate(),
+          )
         : null;
       const previousCycleMonthYear =
         activeTenancy && cycleMonthYear
@@ -229,11 +286,15 @@ export class PaymentsService {
           : null;
       const currentRecord =
         activeTenancy && cycleMonthYear
-          ? activeTenancy.rentRecords.find((record) => record.monthYear === cycleMonthYear) ?? null
+          ? (activeTenancy.rentRecords.find(
+              (record) => record.monthYear === cycleMonthYear,
+            ) ?? null)
           : null;
       const previousRecord =
         activeTenancy && previousCycleMonthYear
-          ? activeTenancy.rentRecords.find((record) => record.monthYear === previousCycleMonthYear) ?? null
+          ? (activeTenancy.rentRecords.find(
+              (record) => record.monthYear === previousCycleMonthYear,
+            ) ?? null)
           : null;
       const settlement = activeTenancy
         ? this.buildSettlementSummary(
@@ -259,32 +320,48 @@ export class PaymentsService {
           : 'Vacant',
         tenantPhone: activeTenancy?.tenant.phone ?? null,
         tenantEmail: activeTenancy?.tenant.email ?? null,
-        monthlyRent: activeTenancy ? Number(activeTenancy.monthlyRent) : Number(house.rentAmount),
+        monthlyRent: activeTenancy
+          ? Number(activeTenancy.monthlyRent)
+          : Number(house.rentAmount),
         carriedForward: breakdown.carriedForward,
         securityDepositCharged: breakdown.securityDepositCharged,
         depositSettled: settlement?.depositSettled ?? true,
         expectedThisMonth: breakdown.totalDue,
         paid: currentRecord ? Number(currentRecord.amountPaid) : 0,
         deficit: currentRecord ? Number(currentRecord.deficit) : 0,
-        securityDepositAmount: activeTenancy ? Number(activeTenancy.securityDepositAmount) : 0,
+        securityDepositAmount: activeTenancy
+          ? Number(activeTenancy.securityDepositAmount)
+          : 0,
         prevMonthStatus: previousRecord
-          ? (settlement?.recordsById.get(previousRecord.id)?.remainingBalance ?? Number(previousRecord.deficit)) === 0
+          ? (settlement?.recordsById.get(previousRecord.id)?.remainingBalance ??
+              Number(previousRecord.deficit)) === 0
             ? 'Fully paid'
             : `Deficit KES ${(settlement?.recordsById.get(previousRecord.id)?.remainingBalance ?? Number(previousRecord.deficit)).toLocaleString()}`
           : 'No record',
       };
     });
 
-    const totalRentExpected = rows.reduce((sum, row) => sum + row.expectedThisMonth, 0);
+    const totalRentExpected = rows.reduce(
+      (sum, row) => sum + row.expectedThisMonth,
+      0,
+    );
     const totalCollected = rows.reduce((sum, row) => sum + row.paid, 0);
     const totalDeficit = rows.reduce((sum, row) => sum + row.deficit, 0);
-    const occupiedUnits = rows.filter((row) => row.tenantName !== 'Vacant').length;
+    const occupiedUnits = rows.filter(
+      (row) => row.tenantName !== 'Vacant',
+    ).length;
     const vacantUnits = rows.length - occupiedUnits;
+
+    const currentMonthDeductions = await this.getEstateMonthDeductionTotal(
+      estateId,
+      new Date(),
+    );
 
     const approvedExpenses = await this.prisma.complaint.aggregate({
       where: {
         estateId,
-        status: role === Role.OWNER ? undefined : undefined,
+        status: ComplaintStatus.OWNER_APPROVED,
+        isDeductibleExpense: true,
         approvedCost: { not: null },
       },
       _sum: { approvedCost: true },
@@ -298,7 +375,10 @@ export class PaymentsService {
         occupiedUnits,
         vacantUnits,
         awaitingConfirmation: pendingPayments,
-        totalApprovedDeductibleExpenses: Number(approvedExpenses._sum.approvedCost ?? 0),
+        currentMonthDeductibleExpenses: currentMonthDeductions,
+        totalApprovedDeductibleExpenses: Number(
+          approvedExpenses._sum.approvedCost ?? 0,
+        ),
       },
       rows,
     };
@@ -329,7 +409,8 @@ export class PaymentsService {
     return payments.map((payment) => ({
       id: payment.id,
       houseName: payment.tenancy.house.name,
-      tenantName: `${payment.tenancy.tenant.first_name} ${payment.tenancy.tenant.last_name}`.trim(),
+      tenantName:
+        `${payment.tenancy.tenant.first_name} ${payment.tenancy.tenant.last_name}`.trim(),
       amountClaimed: Number(payment.amount),
       paymentType: payment.paymentType,
       dateSubmitted: payment.createdAt,
@@ -351,7 +432,11 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
-    await this.ensureEstateAccess(payment.tenancy.house.estateId, userId, Role.CARETAKER);
+    await this.ensureEstateAccess(
+      payment.tenancy.house.estateId,
+      userId,
+      Role.CARETAKER,
+    );
 
     if (payment.confirmedByCaretaker || payment.rejectedByCaretaker) {
       throw new BadRequestException('Payment has already been reviewed');
@@ -367,10 +452,20 @@ export class PaymentsService {
       });
 
       const currentRecordedPaid = Number(payment.rentRecord.amountPaid);
-      const totalAppliedToCurrent = currentRecordedPaid + Number(payment.amount);
-      const deficit = Math.max(Number(payment.rentRecord.amountDue) - totalAppliedToCurrent, 0);
-      const appliedToCurrent = Math.min(totalAppliedToCurrent, Number(payment.rentRecord.amountDue));
-      const creditIncrease = Math.max(totalAppliedToCurrent - Number(payment.rentRecord.amountDue), 0);
+      const totalAppliedToCurrent =
+        currentRecordedPaid + Number(payment.amount);
+      const deficit = Math.max(
+        Number(payment.rentRecord.amountDue) - totalAppliedToCurrent,
+        0,
+      );
+      const appliedToCurrent = Math.min(
+        totalAppliedToCurrent,
+        Number(payment.rentRecord.amountDue),
+      );
+      const creditIncrease = Math.max(
+        totalAppliedToCurrent - Number(payment.rentRecord.amountDue),
+        0,
+      );
       const status =
         deficit <= 0
           ? RentRecordStatus.PAID
@@ -404,7 +499,11 @@ export class PaymentsService {
     });
   }
 
-  async getEstatePaymentConfirmations(estateId: string, userId: string, role: Role) {
+  async getEstatePaymentConfirmations(
+    estateId: string,
+    userId: string,
+    role: Role,
+  ) {
     await this.ensureEstateAccess(estateId, userId, role);
     await this.ensureMonthlyRecordsForEstate(estateId);
 
@@ -420,6 +519,7 @@ export class PaymentsService {
             last_name: true,
             phone: true,
             email: true,
+            is_active: true,
           },
         },
         house: {
@@ -443,10 +543,7 @@ export class PaymentsService {
           },
         },
       },
-      orderBy: [
-        { house: { name: 'asc' } },
-        { startDate: 'desc' },
-      ],
+      orderBy: [{ house: { name: 'asc' } }, { startDate: 'desc' }],
     });
 
     const pendingPayments = await this.prisma.payment.findMany({
@@ -485,12 +582,15 @@ export class PaymentsService {
       tenants: tenancies.map((tenancy) => ({
         tenancyId: tenancy.id,
         tenantId: tenancy.tenant.id,
-        tenantName: `${tenancy.tenant.first_name} ${tenancy.tenant.last_name}`.trim(),
+        tenantName:
+          `${tenancy.tenant.first_name} ${tenancy.tenant.last_name}`.trim(),
         tenantPhone: tenancy.tenant.phone,
         tenantEmail: tenancy.tenant.email,
         houseId: tenancy.house.id,
         houseName: tenancy.house.name,
         isActive: tenancy.endDate === null,
+        tenantIsActive: tenancy.tenant.is_active,
+        tenancyEndDate: tenancy.endDate,
         creditBalance: Number(tenancy.creditBalance),
         receipts: tenancy.payments.map((payment) => ({
           id: payment.id,
@@ -506,7 +606,8 @@ export class PaymentsService {
         id: payment.id,
         tenancyId: payment.tenancyId,
         tenantId: payment.tenancy.tenant.id,
-        tenantName: `${payment.tenancy.tenant.first_name} ${payment.tenancy.tenant.last_name}`.trim(),
+        tenantName:
+          `${payment.tenancy.tenant.first_name} ${payment.tenancy.tenant.last_name}`.trim(),
         tenantPhone: payment.tenancy.tenant.phone,
         tenantEmail: payment.tenancy.tenant.email,
         houseName: payment.tenancy.house.name,
@@ -529,7 +630,11 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
-    await this.ensureEstateAccess(payment.tenancy.house.estateId, userId, Role.CARETAKER);
+    await this.ensureEstateAccess(
+      payment.tenancy.house.estateId,
+      userId,
+      Role.CARETAKER,
+    );
 
     return this.prisma.payment.update({
       where: { id: paymentId },
@@ -540,55 +645,319 @@ export class PaymentsService {
     });
   }
 
-  async getMonthlyReport(estateId: string, userId: string, role: Role, month: number, year: number) {
+  async issueCaretakerSalary(
+    estateId: string,
+    userId: string,
+    role: Role,
+    amount: number,
+    month: number,
+    year: number,
+    note?: string,
+  ) {
+    if (
+      !Number.isInteger(month) ||
+      !Number.isInteger(year) ||
+      month < 1 ||
+      month > 12
+    ) {
+      throw new BadRequestException('A valid salary month and year are required');
+    }
+
+    await this.ensureEstateAccess(estateId, userId, role);
+    const estate = await this.prisma.estate.findUnique({
+      where: { id: estateId },
+      select: { id: true, owner_id: true },
+    });
+
+    if (!estate) {
+      throw new NotFoundException('Estate not found');
+    }
+
+    if (role === Role.OWNER && estate.owner_id !== userId) {
+      throw new ForbiddenException('Access denied to this estate');
+    }
+
+    const hasSalaryTable = await this.hasCaretakerSalaryPaymentsTable();
+    if (!hasSalaryTable) {
+      throw new BadRequestException(
+        'Caretaker salary records are not available until the salary payment migration is applied.',
+      );
+    }
+
+    const currentAssignment = await this.prisma.caretakerEstate.findFirst({
+      where: { estate_id: estateId },
+      orderBy: { assigned_at: 'desc' },
+      select: { user_id: true },
+    });
+    const monthYear = `${year}-${String(month).padStart(2, '0')}`;
+
+    const [payment] = await this.prisma.$queryRaw<CaretakerSalaryPaymentRow[]>`
+      INSERT INTO "caretaker_salary_payments" (
+        "id",
+        "estate_id",
+        "caretaker_user_id",
+        "paid_by_owner_id",
+        "salary_month_year",
+        "amount",
+        "note",
+        "paid_at",
+        "created_at"
+      )
+      VALUES (
+        ${this.createTextId()},
+        ${estateId},
+        ${currentAssignment?.user_id ?? null},
+        ${userId},
+        ${monthYear},
+        ${new Prisma.Decimal(amount)},
+        ${note ?? null},
+        NOW(),
+        NOW()
+      )
+      RETURNING
+        "id",
+        "amount",
+        "note",
+        "paid_at",
+        "salary_month_year",
+        NULL::text AS "caretaker_first_name",
+        NULL::text AS "caretaker_last_name",
+        NULL::text AS "paid_by_first_name",
+        NULL::text AS "paid_by_last_name"
+    `;
+
+    return {
+      id: payment.id,
+      amount: Number(payment.amount),
+      note: payment.note,
+      paid_at: payment.paid_at,
+      salary_month_year: payment.salary_month_year,
+      message: 'Caretaker salary recorded',
+    };
+  }
+
+  async getMonthlyReport(
+    estateId: string,
+    userId: string,
+    role: Role,
+    month: number,
+    year: number,
+  ) {
+    if (
+      !Number.isInteger(month) ||
+      !Number.isInteger(year) ||
+      month < 1 ||
+      month > 12
+    ) {
+      throw new BadRequestException('A valid month and year are required');
+    }
+
     await this.ensureEstateAccess(estateId, userId, role);
     await this.ensureMonthlyRecordsForEstate(estateId);
 
     const monthYear = `${year}-${String(month).padStart(2, '0')}`;
+    const monthStart = new Date(`${monthYear}-01T00:00:00.000Z`);
+    const monthEnd = new Date(
+      Date.UTC(year, month, 1, 0, 0, 0, 0),
+    );
     const estate = await this.prisma.estate.findUnique({
       where: { id: estateId },
-      select: { id: true, name: true, owner_id: true },
+      select: {
+        id: true,
+        name: true,
+        owner_id: true,
+      },
     });
     if (!estate) {
       throw new NotFoundException('Estate not found');
     }
 
+    const salaryPayments = await this.getCaretakerSalaryPayments(
+      estateId,
+      monthYear,
+    );
+    const caretakerSalaryDeduction = salaryPayments.reduce(
+      (sum, payment) => sum + Number(payment.amount),
+      0,
+    );
+
     const rows = await this.prisma.house.findMany({
       where: { estateId },
       include: {
         tenancies: {
-          where: { OR: [{ endDate: null }, { endDate: { gte: new Date(`${monthYear}-01T00:00:00.000Z`) } }] },
+          where: {
+            OR: [
+              { endDate: null },
+              { endDate: { gte: new Date(`${monthYear}-01T00:00:00.000Z`) } },
+            ],
+          },
+          orderBy: { startDate: 'desc' },
           include: {
             rentRecords: { where: { monthYear } },
+            tenant: {
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                is_active: true,
+              },
+            },
           },
         },
       },
       orderBy: { name: 'asc' },
     });
 
+    const deductibleComplaintsForMonth = await this.prisma.complaint.findMany({
+      where: {
+        estateId,
+        isDeductibleExpense: true,
+        createdAt: {
+          gte: monthStart,
+          lt: monthEnd,
+        },
+      },
+      select: {
+        houseId: true,
+        estimatedCost: true,
+        approvedCost: true,
+        status: true,
+      },
+    });
+
+    const yearStart = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0));
+    const yearEnd = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0));
+
+    const [
+      yearlyRentRecords,
+      yearlyApprovedComplaintDeductions,
+      yearlyCaretakerSalaryPayments,
+    ] =
+      await Promise.all([
+        this.prisma.rentRecord.findMany({
+          where: {
+            monthYear: { startsWith: `${year}-` },
+            tenancy: {
+              house: {
+                estateId,
+              },
+            },
+          },
+          select: {
+            monthYear: true,
+            amountPaid: true,
+          },
+        }),
+        this.prisma.complaint.findMany({
+          where: {
+            estateId,
+            isDeductibleExpense: true,
+            createdAt: {
+              gte: yearStart,
+              lt: yearEnd,
+            },
+          },
+          select: {
+            estimatedCost: true,
+            approvedCost: true,
+            createdAt: true,
+            status: true,
+          },
+        }),
+        this.getCaretakerSalaryPaymentsForYear(estateId, year),
+      ]);
+
+    const complaintDeductionsByHouse = deductibleComplaintsForMonth.reduce(
+      (acc, complaint) => {
+        const current = acc.get(complaint.houseId) ?? 0;
+        acc.set(
+          complaint.houseId,
+          current + this.getComplaintDeductionAmount(complaint),
+        );
+        return acc;
+      },
+      new Map<string, number>(),
+    );
+
     const units = rows.map((house) => {
       const tenancy = house.tenancies[0] ?? null;
       const record = tenancy?.rentRecords[0] ?? null;
       const rentCollected = record ? Number(record.amountPaid) : 0;
+      const complaintDeductions =
+        complaintDeductionsByHouse.get(house.id) ?? 0;
       return {
         unit_id: house.id,
         unit_number: house.name,
-        monthly_rent: tenancy ? Number(tenancy.monthlyRent) : Number(house.rentAmount),
+        tenant_name: tenancy
+          ? `${tenancy.tenant.first_name} ${tenancy.tenant.last_name}`.trim()
+          : null,
+        tenant_is_active: tenancy ? tenancy.tenant.is_active : null,
+        tenancy_is_active: tenancy ? tenancy.endDate === null : null,
+        tenancy_end_date: tenancy?.endDate ?? null,
+        monthly_rent: tenancy
+          ? Number(tenancy.monthlyRent)
+          : Number(house.rentAmount),
         rent_collected: rentCollected,
-        complaint_deductions: 0,
-        net_amount: rentCollected,
+        complaint_deductions: complaintDeductions,
+        net_amount: Math.max(rentCollected - complaintDeductions, 0),
       };
     });
 
-    const totalRentCollected = units.reduce((sum, unit) => sum + unit.rent_collected, 0);
-    const approved = await this.prisma.complaint.aggregate({
-      where: {
-        estateId,
-        approvedCost: { not: null },
-      },
-      _sum: { approvedCost: true },
+    const totalRentCollected = units.reduce(
+      (sum, unit) => sum + unit.rent_collected,
+      0,
+    );
+    const complaintDeductionsTotal = units.reduce(
+      (sum, unit) => sum + unit.complaint_deductions,
+      0,
+    );
+    const totalDeductions =
+      complaintDeductionsTotal + caretakerSalaryDeduction;
+
+    const monthlyCollections = Array.from({ length: 12 }, (_, index) => ({
+      month: index + 1,
+      month_label: this.getMonthLabel(index + 1),
+      total_rent_collected: 0,
+      complaint_deductions_total: 0,
+      caretaker_salary_deduction: 0,
+      total_deductions: 0,
+      net_owner_payout: 0,
+    }));
+
+    yearlyRentRecords.forEach((record) => {
+      const recordMonth = Number(record.monthYear.split('-')[1]);
+      const bucket = monthlyCollections[recordMonth - 1];
+      if (!bucket) {
+        return;
+      }
+      bucket.total_rent_collected += Number(record.amountPaid);
     });
-    const totalDeductions = Number(approved._sum.approvedCost ?? 0);
+
+    yearlyApprovedComplaintDeductions.forEach((complaint) => {
+      const recordMonth = complaint.createdAt.getUTCMonth();
+      const bucket = monthlyCollections[recordMonth];
+      if (!bucket) {
+        return;
+      }
+      bucket.complaint_deductions_total +=
+        this.getComplaintDeductionAmount(complaint);
+    });
+
+    yearlyCaretakerSalaryPayments.forEach((payment) => {
+      const recordMonth = Number(payment.salary_month_year.split('-')[1]);
+      const bucket = monthlyCollections[recordMonth - 1];
+      if (!bucket) {
+        return;
+      }
+      bucket.caretaker_salary_deduction += Number(payment.amount);
+    });
+
+    monthlyCollections.forEach((bucket) => {
+      bucket.total_deductions =
+        bucket.complaint_deductions_total + bucket.caretaker_salary_deduction;
+      bucket.net_owner_payout =
+        bucket.total_rent_collected - bucket.total_deductions;
+    });
 
     return {
       estate_id: estate.id,
@@ -597,9 +966,27 @@ export class PaymentsService {
       month,
       year,
       total_rent_collected: totalRentCollected,
+      complaint_deductions_total: complaintDeductionsTotal,
+      caretaker_salary_deduction: caretakerSalaryDeduction,
       total_deductions: totalDeductions,
       net_owner_payout: totalRentCollected - totalDeductions,
       unassigned_deductions: 0,
+      salary_payments: salaryPayments.map((payment) => ({
+        id: payment.id,
+        amount: Number(payment.amount),
+        note: payment.note,
+        paid_at: payment.paid_at,
+        salary_month_year: payment.salary_month_year,
+        caretaker_name:
+          payment.caretaker_first_name && payment.caretaker_last_name
+            ? `${payment.caretaker_first_name} ${payment.caretaker_last_name}`.trim()
+            : null,
+        paid_by_name:
+          payment.paid_by_first_name && payment.paid_by_last_name
+            ? `${payment.paid_by_first_name} ${payment.paid_by_last_name}`.trim()
+            : null,
+      })),
+      monthly_collections: monthlyCollections,
       units,
     };
   }
@@ -628,7 +1015,9 @@ export class PaymentsService {
       where: { endDate: null, house: { estateId } },
       select: { id: true },
     });
-    await Promise.all(tenancies.map((tenancy) => this.ensureMonthlyRecords(tenancy.id)));
+    await Promise.all(
+      tenancies.map((tenancy) => this.ensureMonthlyRecords(tenancy.id)),
+    );
   }
 
   private async ensureMonthlyRecords(tenancyId: string) {
@@ -657,7 +1046,9 @@ export class PaymentsService {
       where: { tenancyId },
       orderBy: { monthYear: 'asc' },
     });
-    const recordMap = new Map(existing.map((record) => [record.monthYear, record]));
+    const recordMap = new Map(
+      existing.map((record) => [record.monthYear, record]),
+    );
     let availableCredit = Number(tenancy.creditBalance);
     if (existing.length > 0) {
       previousDeficit = Number(existing[existing.length - 1].deficit);
@@ -668,9 +1059,13 @@ export class PaymentsService {
       const existingRecord = recordMap.get(monthYear);
 
       if (!existingRecord) {
-        const isFirstTenancyMonth = monthYear === this.getMonthYear(tenancy.startDate);
-        const securityDeposit = isFirstTenancyMonth ? Number(tenancy.securityDepositAmount) : 0;
-        const grossAmountDue = Number(tenancy.monthlyRent) + previousDeficit + securityDeposit;
+        const isFirstTenancyMonth =
+          monthYear === this.getMonthYear(tenancy.startDate);
+        const securityDeposit = isFirstTenancyMonth
+          ? Number(tenancy.securityDepositAmount)
+          : 0;
+        const grossAmountDue =
+          Number(tenancy.monthlyRent) + previousDeficit + securityDeposit;
         const creditApplied = Math.min(grossAmountDue, availableCredit);
         const amountDue = grossAmountDue;
         const amountPaid = creditApplied;
@@ -731,7 +1126,11 @@ export class PaymentsService {
     }, {});
   }
 
-  private async ensureEstateAccess(estateId: string, userId: string, role: Role) {
+  private async ensureEstateAccess(
+    estateId: string,
+    userId: string,
+    role: Role,
+  ) {
     if (role === Role.ADMIN) {
       return;
     }
@@ -760,8 +1159,15 @@ export class PaymentsService {
     return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
   }
 
-  private buildRentBreakdown(baseRent: number, carriedForward: number, amountDue: number) {
-    const securityDepositCharged = Math.max(amountDue - baseRent - carriedForward, 0);
+  private buildRentBreakdown(
+    baseRent: number,
+    carriedForward: number,
+    amountDue: number,
+  ) {
+    const securityDepositCharged = Math.max(
+      amountDue - baseRent - carriedForward,
+      0,
+    );
     return {
       baseRent,
       carriedForward,
@@ -782,7 +1188,10 @@ export class PaymentsService {
     tenancyStartDate: Date,
     baseRent: number,
   ) {
-    const outstandingByRecord = new Map<string, { rent: number; deposit: number }>();
+    const outstandingByRecord = new Map<
+      string,
+      { rent: number; deposit: number }
+    >();
     let hasDepositCharge = false;
 
     for (const record of records) {
@@ -844,14 +1253,22 @@ export class PaymentsService {
     };
   }
 
-  private getBaseRentForRecord(tenancyStartDate: Date, monthlyRent: number, monthYear: string) {
+  private getBaseRentForRecord(
+    tenancyStartDate: Date,
+    monthlyRent: number,
+    monthYear: string,
+  ) {
     if (this.getMonthYear(tenancyStartDate) !== monthYear) {
       return monthlyRent;
     }
 
     const startDay = tenancyStartDate.getUTCDate();
     const daysInMonth = new Date(
-      Date.UTC(tenancyStartDate.getUTCFullYear(), tenancyStartDate.getUTCMonth() + 1, 0),
+      Date.UTC(
+        tenancyStartDate.getUTCFullYear(),
+        tenancyStartDate.getUTCMonth() + 1,
+        0,
+      ),
     ).getUTCDate();
     const occupiedDays = daysInMonth - startDay + 1;
     const prorated = (monthlyRent * occupiedDays) / daysInMonth;
@@ -869,13 +1286,140 @@ export class PaymentsService {
     return this.getMonthYear(date);
   }
 
+  private async getEstateMonthDeductionTotal(estateId: string, date: Date) {
+    const monthStart = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 0, 0, 0, 0),
+    );
+    const monthEnd = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1, 0, 0, 0, 0),
+    );
+
+    const complaints = await this.prisma.complaint.findMany({
+      where: {
+        estateId,
+        isDeductibleExpense: true,
+        createdAt: {
+          gte: monthStart,
+          lt: monthEnd,
+        },
+      },
+      select: {
+        estimatedCost: true,
+        approvedCost: true,
+      },
+    });
+
+    return complaints.reduce(
+      (sum, complaint) => sum + this.getComplaintDeductionAmount(complaint),
+      0,
+    );
+  }
+
+  private async hasCaretakerSalaryPaymentsTable() {
+    const result = await this.prisma.$queryRaw<Array<{ exists: boolean }>>`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_name = 'caretaker_salary_payments'
+      ) AS "exists"
+    `;
+
+    return result[0]?.exists ?? false;
+  }
+
+  private async getCaretakerSalaryPayments(
+    estateId: string,
+    monthYear: string,
+  ) {
+    try {
+      return await this.prisma.$queryRaw<CaretakerSalaryPaymentRow[]>`
+        SELECT
+          salary."id",
+          salary."amount",
+          salary."note",
+          salary."paid_at",
+          salary."salary_month_year",
+          caretaker."first_name" AS "caretaker_first_name",
+          caretaker."last_name" AS "caretaker_last_name",
+          owner."first_name" AS "paid_by_first_name",
+          owner."last_name" AS "paid_by_last_name"
+        FROM "caretaker_salary_payments" salary
+        LEFT JOIN "users" caretaker ON caretaker."id" = salary."caretaker_user_id"
+        LEFT JOIN "users" owner ON owner."id" = salary."paid_by_owner_id"
+        WHERE salary."estate_id" = ${estateId}
+          AND salary."salary_month_year" = ${monthYear}
+        ORDER BY salary."paid_at" DESC
+      `;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('caretaker_salary_payments')
+      ) {
+        return [];
+      }
+
+      throw error;
+    }
+  }
+
+  private async getCaretakerSalaryPaymentsForYear(
+    estateId: string,
+    year: number,
+  ) {
+    try {
+      return await this.prisma.$queryRaw<
+        Array<{ salary_month_year: string; amount: Prisma.Decimal }>
+      >`
+        SELECT
+          "salary_month_year",
+          "amount"
+        FROM "caretaker_salary_payments"
+        WHERE "estate_id" = ${estateId}
+          AND "salary_month_year" LIKE ${`${year}-%`}
+      `;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('caretaker_salary_payments')
+      ) {
+        return [];
+      }
+
+      throw error;
+    }
+  }
+
+  private createTextId() {
+    return [
+      Date.now().toString(36),
+      Math.random().toString(36).slice(2),
+      Math.random().toString(36).slice(2),
+    ].join('');
+  }
+
+  private getComplaintDeductionAmount(complaint: {
+    approvedCost: Prisma.Decimal | null;
+    estimatedCost?: Prisma.Decimal | null;
+  }) {
+    return Number(complaint.approvedCost ?? complaint.estimatedCost ?? 0);
+  }
+
+  private getMonthLabel(month: number) {
+    return new Date(Date.UTC(2000, month - 1, 1)).toLocaleString('en-US', {
+      month: 'short',
+      timeZone: 'UTC',
+    });
+  }
+
   private getBillingCycleMonthYear(date: Date, billingAnchorDay: number) {
     return this.getMonthYear(this.getBillingCycleStart(date, billingAnchorDay));
   }
 
   private getBillingCycleStart(date: Date, billingAnchorDay: number) {
     const currentDay = date.getUTCDate();
-    const base = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+    const base = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1),
+    );
     const targetMonthDate =
       currentDay >= billingAnchorDay
         ? base
@@ -884,25 +1428,42 @@ export class PaymentsService {
     return this.withBillingAnchorDay(targetMonthDate, billingAnchorDay);
   }
 
-  private addBillingCycleMonths(date: Date, months: number, billingAnchorDay: number) {
-    const shifted = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
+  private addBillingCycleMonths(
+    date: Date,
+    months: number,
+    billingAnchorDay: number,
+  ) {
+    const shifted = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1),
+    );
     return this.withBillingAnchorDay(shifted, billingAnchorDay);
   }
 
-  private getPreviousBillingCycleMonthYear(monthYear: string, billingAnchorDay: number) {
+  private getPreviousBillingCycleMonthYear(
+    monthYear: string,
+    billingAnchorDay: number,
+  ) {
     const [year, month] = monthYear.split('-').map(Number);
     const currentCycleStart = this.withBillingAnchorDay(
       new Date(Date.UTC(year, month - 1, 1)),
       billingAnchorDay,
     );
 
-    return this.getMonthYear(this.addBillingCycleMonths(currentCycleStart, -1, billingAnchorDay));
+    return this.getMonthYear(
+      this.addBillingCycleMonths(currentCycleStart, -1, billingAnchorDay),
+    );
   }
 
   private withBillingAnchorDay(date: Date, billingAnchorDay: number) {
-    const daysInMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+    const daysInMonth = new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
+    ).getUTCDate();
     return new Date(
-      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), Math.min(billingAnchorDay, daysInMonth)),
+      Date.UTC(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        Math.min(billingAnchorDay, daysInMonth),
+      ),
     );
   }
 }

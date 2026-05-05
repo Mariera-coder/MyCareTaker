@@ -8,6 +8,7 @@ import {
   useSubmitTenantPaymentMutation,
 } from "@/features/payments/paymentsApi";
 import { useGetComplaintsByEstateQuery } from "@/features/complaints/complaintsApi";
+import { AdminRegistrationsPage } from "@/features/auth/AdminRegistrationsPage";
 import { DataTable, StatusPill } from "@/components/shared/DataTable";
 import { StatCard } from "@/components/shared/StatCard";
 import { Button } from "@/components/ui/button";
@@ -298,11 +299,21 @@ export function DashboardPage() {
           <StatCard title="Total Collected This Month" value={formatKes(dashboard.stats.totalCollected)} backgroundColor="bg-[#15803d]" />
           <StatCard title="Total Deficit This Month" value={formatKes(dashboard.stats.totalDeficit)} backgroundColor="bg-[#b91c1c]" />
           <StatCard
-            title={user.role === "CARETAKER" ? "Awaiting Confirmation" : "Total Approved Deductible Expenses"}
-            value={user.role === "CARETAKER" ? dashboard.stats.awaitingConfirmation : formatKes(dashboard.stats.totalApprovedDeductibleExpenses)}
+            title="Current Month Deductions"
+            value={formatKes(dashboard.stats.currentMonthDeductibleExpenses)}
             backgroundColor="bg-[#b45309]"
           />
         </div>
+
+        {user.role === "CARETAKER" ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Awaiting payment confirmations for this estate: <span className="font-semibold">{dashboard.stats.awaitingConfirmation}</span>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+            Total approved deductible expenses for this estate: <span className="font-semibold">{formatKes(dashboard.stats.totalApprovedDeductibleExpenses)}</span>
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="flex items-center justify-end gap-2">
@@ -399,13 +410,6 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <DashboardHeader title="Administrator Panel" estateName={null} />
-      <Card className="rounded-xl border-slate-200">
-        <CardContent className="p-6 text-sm text-slate-600">
-          Use the pending registrations and house administration tools to manage allocations, rent, and vacates.
-        </CardContent>
-      </Card>
-    </div>
+    <AdminRegistrationsPage />
   );
 }

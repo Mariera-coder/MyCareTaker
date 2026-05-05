@@ -16,7 +16,7 @@ export class ReportsService {
     return this.paymentsService.getMonthlyReport(
       estateId,
       user.id,
-      user.role as Role,
+      user.role,
       query.month,
       query.year,
     );
