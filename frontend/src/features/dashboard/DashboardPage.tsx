@@ -25,7 +25,7 @@ function DashboardHeader({ title, estateName }: { title: string; estateName?: st
         {title}
         {estateName ? ` · ${estateName}` : ""}
       </h1>
-      <p className="text-sm text-slate-600">{estateName ?? "MyCareTaker workspace"}</p>
+      <p className="text-sm text-slate-600">{estateName ?? "INKAHOME workspace"}</p>
     </div>
   );
 }

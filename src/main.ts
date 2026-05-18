@@ -56,7 +56,7 @@ async function bootstrap(): Promise<void> {
   const port = configService.get<number>('PORT', 3000);
 
   await app.listen(port);
-  console.log(`🚀 MyCareTaker API running on http://localhost:${port}/api`);
+  console.log(`INKAHOME API running on http://localhost:${port}/api`);
 }
 
 void bootstrap();

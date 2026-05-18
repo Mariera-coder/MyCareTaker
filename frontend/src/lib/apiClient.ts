@@ -50,7 +50,7 @@ function getRequestMeta(args: string | FetchArgs) {
 }
 
 function withCsrfHeader(args: string | FetchArgs): string | FetchArgs {
-  const csrfToken = readCookie("mycaretaker_csrf_token");
+  const csrfToken = readCookie("inkahome_csrf_token");
   if (!csrfToken) {
     return args;
   }
@@ -93,7 +93,7 @@ async function ensureCsrfCookie(
   api: BaseQueryApi,
   extraOptions: Record<string, unknown> | undefined,
 ): Promise<void> {
-  if (readCookie("mycaretaker_csrf_token")) {
+  if (readCookie("inkahome_csrf_token")) {
     return;
   }
 

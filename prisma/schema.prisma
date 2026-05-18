@@ -1,4 +1,4 @@
-// MyCareTaker — Prisma Schema V2
+// INKAHOME - Prisma Schema V2
 
 generator client {
   provider = "prisma-client-js"

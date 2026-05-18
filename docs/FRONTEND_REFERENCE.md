@@ -1,4 +1,4 @@
-# MyCareTaker Backend API Summary (Frontend Reference)
+# INKAHOME Backend API Summary (Frontend Reference)
 
 This document reflects the implemented backend as of March 5, 2026.
 
@@ -456,4 +456,3 @@ Response shape:
 4. Request/serialization handling:
 - treat decimal values as numbers in UI but be ready for string payloads from backend serialization
 - handle validation errors from global Nest validation pipe
-

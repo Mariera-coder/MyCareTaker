@@ -54,7 +54,7 @@ export function LoginPage() {
   const onSubmit = async (values: LoginFormData) => {
     const response = await login(values).unwrap();
     const savedEstateId =
-      typeof window !== "undefined" ? window.localStorage.getItem("mycaretaker_selected_estate") : null;
+      typeof window !== "undefined" ? window.localStorage.getItem("inkahome_selected_estate") : null;
     const hasSavedEstate =
       !!savedEstateId && response.session.estates.some((estate) => estate.id === savedEstateId);
     const hasSingleEstate =

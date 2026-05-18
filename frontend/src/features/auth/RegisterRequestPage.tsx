@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 type FormValues = z.infer<typeof registrationRequestSchema>;
 
 export function RegisterRequestPage() {
+  const [searchParams] = useSearchParams();
+  const requestedRole = searchParams.get("role");
+  const initialRole =
+    requestedRole === "OWNER" || requestedRole === "CARETAKER" || requestedRole === "TENANT" ? requestedRole : "TENANT";
   const [submitRegistration, { isLoading, isSuccess }] = useSubmitRegistrationMutation();
   const [estateCount, setEstateCount] = useState(1);
   const [requestedEstates, setRequestedEstates] = useState<RequestedEstate[]>([{ name: "", unitCount: 0 }]);
@@ -29,7 +33,7 @@ export function RegisterRequestPage() {
   } = useForm<FormValues>({
     resolver: zodResolver(registrationRequestSchema),
     defaultValues: {
-      role: "TENANT",
+      role: initialRole,
     },
   });
 
@@ -79,7 +83,7 @@ export function RegisterRequestPage() {
       <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-6xl items-center justify-center">
         <Card className="w-full max-w-2xl border-[#eadfcd] bg-white shadow-[0_24px_80px_rgba(120,86,34,0.10)]">
           <CardHeader className="space-y-3 text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-700">Join MyCareTaker</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-700">Join INKAHOME</p>
             <CardTitle className="text-3xl tracking-tight text-slate-900">Registration Request</CardTitle>
             <CardDescription>
               Submit the Gmail address and password you want to use after the administrator approves your request.
@@ -90,7 +94,7 @@ export function RegisterRequestPage() {
               <div className="space-y-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 <p>Your registration request has been submitted. The administrator will review and contact you.</p>
                 <Button asChild variant="outline">
-                  <Link to="/who-are-you">Back to entry page</Link>
+                  <Link to="/">Back to entry page</Link>
                 </Button>
               </div>
             ) : (
@@ -148,7 +152,7 @@ export function RegisterRequestPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Role</Label>
-                  <Select defaultValue="TENANT" onValueChange={(value) => setValue("role", value as FormValues["role"])}>
+                  <Select value={role} onValueChange={(value) => setValue("role", value as FormValues["role"])}>
                     <SelectTrigger className="h-11 rounded-xl border-[#dccfb9] bg-[#fffdf9] focus:ring-amber-600">
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>

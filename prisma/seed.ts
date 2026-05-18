@@ -17,10 +17,10 @@ async function main(): Promise<void> {
   const passwordHash = await bcrypt.hash('Password123!', 12);
 
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@mycaretaker.com' },
+    where: { email: 'admin@inkahome.com' },
     update: { password_hash: passwordHash, role: Role.ADMIN, is_active: true },
     create: {
-      email: 'admin@mycaretaker.com',
+      email: 'admin@inkahome.com',
       password_hash: passwordHash,
       first_name: 'System',
       last_name: 'Admin',
@@ -29,10 +29,10 @@ async function main(): Promise<void> {
   });
 
   const owner = await prisma.user.upsert({
-    where: { email: 'owner@mycaretaker.com' },
+    where: { email: 'owner@inkahome.com' },
     update: { password_hash: passwordHash, role: Role.OWNER, is_active: true },
     create: {
-      email: 'owner@mycaretaker.com',
+      email: 'owner@inkahome.com',
       password_hash: passwordHash,
       first_name: 'James',
       last_name: 'Mwangi',
@@ -42,10 +42,10 @@ async function main(): Promise<void> {
   });
 
   const caretaker = await prisma.user.upsert({
-    where: { email: 'caretaker@mycaretaker.com' },
+    where: { email: 'caretaker@inkahome.com' },
     update: { password_hash: passwordHash, role: Role.CARETAKER, is_active: true },
     create: {
-      email: 'caretaker@mycaretaker.com',
+      email: 'caretaker@inkahome.com',
       password_hash: passwordHash,
       first_name: 'Peter',
       last_name: 'Kamau',
@@ -55,10 +55,10 @@ async function main(): Promise<void> {
   });
 
   const tenant = await prisma.user.upsert({
-    where: { email: 'tenant@mycaretaker.com' },
+    where: { email: 'tenant@inkahome.com' },
     update: { password_hash: passwordHash, role: Role.TENANT, is_active: true },
     create: {
-      email: 'tenant@mycaretaker.com',
+      email: 'tenant@inkahome.com',
       password_hash: passwordHash,
       first_name: 'Grace',
       last_name: 'Wanjiku',

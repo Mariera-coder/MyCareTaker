@@ -1,6 +1,6 @@
-# About MyCareTaker
+# About INKAHOME
 
-MyCareTaker is a role-based property management system designed to simplify estate operations for small teams and growing property portfolios.
+INKAHOME is a role-based property management system designed to simplify estate operations for small teams and growing property portfolios.
 
 ## Purpose
 

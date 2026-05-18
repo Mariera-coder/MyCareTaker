@@ -365,7 +365,7 @@ export class HousesService {
       .replace(/[^a-z0-9]+/g, '.')
       .replace(/^\.+|\.+$/g, '');
     const digits = phone.replace(/\D/g, '').slice(-4) || 'user';
-    let candidate = `${safe || 'tenant'}.${digits}@mycaretaker.local`;
+    let candidate = `${safe || 'tenant'}.${digits}@inkahome.local`;
     let suffix = 1;
     while (
       await this.prisma.user.findFirst({
@@ -373,7 +373,7 @@ export class HousesService {
         select: { id: true },
       })
     ) {
-      candidate = `${safe || 'tenant'}.${digits}.${suffix}@mycaretaker.local`;
+      candidate = `${safe || 'tenant'}.${digits}.${suffix}@inkahome.local`;
       suffix += 1;
     }
     return candidate;

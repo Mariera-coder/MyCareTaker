@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Outlet, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/components/shared/ProtectedRoute";
 import { WhoAreYouPage } from "@/features/auth/WhoAreYouPage";
@@ -29,7 +29,7 @@ function NotFoundPage() {
 export function AppRouter() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/who-are-you" replace />} />
+      <Route path="/" element={<WhoAreYouPage />} />
       <Route path="/who-are-you" element={<WhoAreYouPage />} />
       <Route path="/register" element={<RegisterRequestPage />} />
       <Route path="/login" element={<LoginPage />} />

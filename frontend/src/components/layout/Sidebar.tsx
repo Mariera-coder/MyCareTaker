@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAppSelector } from "@/app/hooks";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +29,9 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 border-r bg-white p-4">
-      <h1 className="mb-6 text-xl font-bold text-sky-700">MyCareTaker</h1>
+      <h1 className="mb-6">
+        <BrandLogo textClassName="text-lg" />
+      </h1>
       <nav className="space-y-2">
         {nav.map((item) => (
           <Link

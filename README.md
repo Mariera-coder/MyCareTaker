@@ -1,10 +1,10 @@
-# MyCareTaker
+# INKAHOME
 
-MyCareTaker is a full-stack property management platform built for administrators, estate owners, caretakers, and tenants. It brings estate operations into one workflow: user onboarding, tenancy management, payment tracking, complaint handling, and role-aware reporting.
+INKAHOME is a full-stack property management platform built for administrators, estate owners, caretakers, and tenants. It brings estate operations into one workflow: user onboarding, tenancy management, payment tracking, complaint handling, and role-aware reporting.
 
 ## Why this project
 
-Managing estates across multiple roles is usually fragmented across spreadsheets, calls, and manual follow-up. MyCareTaker centralizes those workflows so each user sees the actions, context, and permissions relevant to their role.
+Managing estates across multiple roles is usually fragmented across spreadsheets, calls, and manual follow-up. INKAHOME centralizes those workflows so each user sees the actions, context, and permissions relevant to their role.
 
 ## Core features
 

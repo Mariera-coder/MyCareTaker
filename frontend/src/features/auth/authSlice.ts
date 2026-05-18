@@ -11,7 +11,7 @@ interface AuthState {
   sessionChecked: boolean;
 }
 
-const ESTATE_STORAGE_KEY = "mycaretaker_selected_estate";
+const ESTATE_STORAGE_KEY = "inkahome_selected_estate";
 
 const loadSelectedEstateId = (): string | null => {
   try {
