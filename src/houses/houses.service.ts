@@ -79,26 +79,96 @@ export class HousesService {
 
     const house = await this.prisma.house.findUnique({
       where: { id: houseId },
+      include: {
+        tenancies: {
+          where: { endDate: null },
+          orderBy: { startDate: 'desc' },
+          take: 1,
+        },
+      },
     });
 
     if (!house) {
       throw new NotFoundException('House not found');
     }
 
-    const updated = await this.prisma.house.update({
-      where: { id: houseId },
-      data: { rentAmount: new Prisma.Decimal(rentAmount) },
-    });
+    const activeTenancy = house.tenancies[0] ?? null;
+    const previousHouseRent = Number(house.rentAmount);
+    const previousTenancyRent = activeTenancy
+      ? Number(activeTenancy.monthlyRent)
+      : null;
+    const rentDelta = activeTenancy ? rentAmount - previousTenancyRent! : 0;
 
-    await this.prisma.auditLog.create({
-      data: {
-        actor_id: actorId,
-        action: 'HOUSE_RENT_UPDATED',
-        entity: 'House',
-        entity_id: houseId,
-        before: { rentAmount: house.rentAmount.toString() },
-        after: { rentAmount: updated.rentAmount.toString() },
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const updatedHouse = await tx.house.update({
+        where: { id: houseId },
+        data: { rentAmount: new Prisma.Decimal(rentAmount) },
+      });
+
+      if (activeTenancy) {
+        await tx.tenancy.update({
+          where: { id: activeTenancy.id },
+          data: { monthlyRent: new Prisma.Decimal(rentAmount) },
+        });
+
+        const monthYear = this.getBillingCycleMonthYear(
+          new Date(),
+          activeTenancy.startDate.getUTCDate(),
+        );
+        const currentRecord = await tx.rentRecord.findUnique({
+          where: {
+            tenancyId_monthYear: {
+              tenancyId: activeTenancy.id,
+              monthYear,
+            },
+          },
+        });
+
+        if (currentRecord && rentDelta !== 0) {
+          const amountDue = Math.max(
+            Number(currentRecord.amountDue) + rentDelta,
+            0,
+          );
+          const deficit = Math.max(
+            amountDue - Number(currentRecord.amountPaid),
+            0,
+          );
+          await tx.rentRecord.update({
+            where: { id: currentRecord.id },
+            data: {
+              amountDue: new Prisma.Decimal(amountDue),
+              deficit: new Prisma.Decimal(deficit),
+              status:
+                deficit <= 0
+                  ? 'PAID'
+                  : Number(currentRecord.amountPaid) > 0
+                    ? 'PARTIAL'
+                    : Number(currentRecord.carriedForwardAmount) > 0
+                      ? 'CARRIED_FORWARD'
+                      : 'PENDING',
+            },
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actor_id: actorId,
+          action: 'HOUSE_RENT_UPDATED',
+          entity: 'House',
+          entity_id: houseId,
+          before: {
+            rentAmount: previousHouseRent,
+            tenancyMonthlyRent: previousTenancyRent,
+          },
+          after: {
+            rentAmount,
+            tenancyMonthlyRent: activeTenancy ? rentAmount : null,
+          },
+        },
+      });
+
+      return updatedHouse;
     });
 
     return updated;

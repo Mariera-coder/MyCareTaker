@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PublicFooter } from "@/components/layout/PublicFooter";
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
@@ -64,63 +65,66 @@ export function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#fffdf8_0%,#f8f4ec_100%)] p-4 text-foreground">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-10 h-40 w-full max-w-5xl -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(217,119,6,0.14)_0%,rgba(255,255,255,0)_70%)] blur-3xl"
-      />
-      <div className="relative mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-5xl items-center justify-center">
-        <Card className="w-full max-w-md border-[#eadfcd] bg-white shadow-[0_24px_80px_rgba(120,86,34,0.10)]">
-          <CardHeader className="space-y-3 text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-700">Welcome Back</p>
-            <CardTitle className="text-3xl tracking-tight text-slate-900">Sign in to continue</CardTitle>
-            <CardDescription className="text-base leading-7 text-slate-600">
-              Use the credentials issued by your administrator.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  className="h-11 rounded-xl border-[#dccfb9] bg-[#fffdf9] focus-visible:ring-amber-600"
-                  {...register("email")}
-                />
-                {errors.email ? <p className="text-xs text-red-600">{errors.email.message}</p> : null}
-              </div>
+    <div className="flex min-h-screen flex-col bg-[linear-gradient(180deg,#fffdf8_0%,#f8f4ec_100%)] text-foreground">
+      <div className="relative flex-1 overflow-hidden p-3 md:p-4">
+        <div
+          aria-hidden="true"
+          className="hidden md:block pointer-events-none absolute left-1/2 top-10 h-40 w-full max-w-5xl -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(217,119,6,0.14)_0%,rgba(255,255,255,0)_70%)] blur-3xl"
+        />
+        <div className="relative mx-auto flex min-h-0 md:min-h-[calc(100vh-2rem)] w-full max-w-5xl items-center justify-center py-3 md:py-0">
+          <Card className="w-full max-w-md border-[#eadfcd] bg-white shadow-[0_24px_80px_rgba(120,86,34,0.10)]">
+            <CardHeader className="space-y-2 md:space-y-3 p-4 md:p-6 text-center">
+              <p className="text-xs md:text-sm font-semibold uppercase tracking-[0.24em] text-amber-700">Welcome Back</p>
+              <CardTitle className="text-2xl md:text-3xl tracking-tight text-slate-900">Sign in to continue</CardTitle>
+              <CardDescription className="text-sm md:text-base leading-6 md:leading-7 text-slate-600">
+                Use the credentials issued by your administrator.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+              <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    className="h-11 rounded-xl border-[#dccfb9] bg-[#fffdf9] focus-visible:ring-amber-600"
+                    {...register("email")}
+                  />
+                  {errors.email ? <p className="text-xs text-red-600">{errors.email.message}</p> : null}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  className="h-11 rounded-xl border-[#dccfb9] bg-[#fffdf9] focus-visible:ring-amber-600"
-                  {...register("password")}
-                />
-                {errors.password ? <p className="text-xs text-red-600">{errors.password.message}</p> : null}
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    className="h-11 rounded-xl border-[#dccfb9] bg-[#fffdf9] focus-visible:ring-amber-600"
+                    {...register("password")}
+                  />
+                  {errors.password ? <p className="text-xs text-red-600">{errors.password.message}</p> : null}
+                </div>
 
-              {error ? <p className="text-sm text-red-600">{getLoginErrorMessage(error)}</p> : null}
-              <Button
-                className="h-11 w-full rounded-xl bg-amber-700 text-white hover:bg-amber-800"
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
-            <p className="mt-5 text-center text-sm text-slate-600">
-              New here?{" "}
-              <Link className="font-medium text-amber-800 underline underline-offset-4" to="/register">
-                Submit a registration request
-              </Link>
-              .
-            </p>
-          </CardContent>
-        </Card>
+                {error ? <p className="text-sm text-red-600">{getLoginErrorMessage(error)}</p> : null}
+                <Button
+                  className="h-11 w-full rounded-xl bg-amber-700 text-white hover:bg-amber-800"
+                  type="submit"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Signing in..." : "Sign In"}
+                </Button>
+              </form>
+              <p className="mt-5 text-center text-sm text-slate-600">
+                New here?{" "}
+                <Link className="font-medium text-amber-800 underline underline-offset-4" to="/register">
+                  Submit a registration request
+                </Link>
+                .
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+      <PublicFooter />
     </div>
   );
 }

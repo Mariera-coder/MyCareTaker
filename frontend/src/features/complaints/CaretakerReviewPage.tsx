@@ -30,7 +30,7 @@ export function CaretakerReviewPage() {
             key={complaint.id}
             complaint={complaint}
             actions={
-              <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)_auto]">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)_auto]">
                 <Input
                   type="number"
                   step="0.01"
@@ -50,7 +50,7 @@ export function CaretakerReviewPage() {
                 />
                 <Button
                   disabled={isLoading}
-                  className="h-fit"
+                  className="h-fit w-full lg:w-auto"
                   onClick={() =>
                     review({
                       id: complaint.id,

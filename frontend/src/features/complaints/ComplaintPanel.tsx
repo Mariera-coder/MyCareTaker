@@ -45,7 +45,7 @@ export function ComplaintPanel({
               {showEstate ? <span>Estate: {complaint.estate.name}</span> : null}
             </div>
           </div>
-          <div className="grid min-w-[220px] grid-cols-2 gap-2 text-sm">
+          <div className="grid w-full sm:w-auto min-w-0 sm:min-w-[220px] grid-cols-2 gap-2 text-sm">
             <div className="rounded-xl bg-slate-50 px-3 py-2">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Estimated</p>
               <p className="mt-1 font-semibold text-slate-900">{formatKes(complaint.estimatedCost)}</p>
@@ -62,7 +62,7 @@ export function ComplaintPanel({
         </div>
 
         {(complaint.caretakerNotes || complaint.ownerNotes) && (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-200 px-4 py-3 text-sm">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Caretaker Notes</p>
               <p className="mt-2 text-slate-700">{complaint.caretakerNotes ?? "No caretaker notes yet."}</p>

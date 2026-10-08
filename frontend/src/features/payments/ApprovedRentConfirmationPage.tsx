@@ -66,7 +66,7 @@ export function ApprovedRentConfirmationPage() {
           ) : (
             (data?.pendingPayments ?? []).map((payment) => (
               <div key={payment.id} className="rounded-xl border border-slate-200 p-4">
-                <div className="grid gap-2 md:grid-cols-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-2">
                   <p className="font-medium text-slate-900">{payment.tenantName}</p>
                   <p>{payment.houseName}</p>
                   <p>{formatKes(payment.amountClaimed)}</p>
@@ -80,24 +80,26 @@ export function ApprovedRentConfirmationPage() {
                   {payment.note ? <p className="md:col-span-2">Note: {payment.note}</p> : null}
                 </div>
                 {user.role === "CARETAKER" ? (
-                  <div className="mt-3 flex gap-3">
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <Button disabled={confirmingPayment} onClick={() => confirmPayment(payment.id)}>
                       Confirm
                     </Button>
-                    <Input
-                      placeholder="Reject reason"
-                      value={rejectReason[payment.id] ?? ""}
-                      onChange={(event) =>
-                        setRejectReason((current) => ({ ...current, [payment.id]: event.target.value }))
-                      }
-                    />
-                    <Button
-                      variant="destructive"
-                      disabled={rejectingPayment || !rejectReason[payment.id]}
-                      onClick={() => rejectPayment({ paymentId: payment.id, reason: rejectReason[payment.id] })}
-                    >
-                      Reject
-                    </Button>
+                    <div className="flex flex-1 gap-2">
+                      <Input
+                        placeholder="Reject reason"
+                        value={rejectReason[payment.id] ?? ""}
+                        onChange={(event) =>
+                          setRejectReason((current) => ({ ...current, [payment.id]: event.target.value }))
+                        }
+                      />
+                      <Button
+                        variant="destructive"
+                        disabled={rejectingPayment || !rejectReason[payment.id]}
+                        onClick={() => rejectPayment({ paymentId: payment.id, reason: rejectReason[payment.id] })}
+                      >
+                        Reject
+                      </Button>
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -166,7 +168,7 @@ export function ApprovedRentConfirmationPage() {
                 ) : (
                   selectedTenant.receipts.map((receipt) => (
                     <div key={receipt.id} className="rounded-xl border border-slate-200 p-4">
-                      <div className="grid gap-2 md:grid-cols-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
                         <p className="font-medium text-slate-900">{formatKes(receipt.amount)}</p>
                         <p>{receipt.cycleLabel}</p>
                         <p>{receipt.paymentType}</p>

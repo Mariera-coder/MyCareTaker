@@ -213,7 +213,7 @@ export function AdminRegistrationsPage() {
                     </Select>
                   </div>
                 ) : null}
-                <div className="mt-3 flex gap-3">
+                <div className="mt-3 flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <Button
                     onClick={() =>
                       approveRegistration({
@@ -225,25 +225,27 @@ export function AdminRegistrationsPage() {
                   >
                     Approve
                   </Button>
-                  <Input
-                    placeholder="Deny reason"
-                    value={denyReason[registration.id] ?? ""}
-                    onChange={(event) =>
-                      setDenyReason((current) => ({ ...current, [registration.id]: event.target.value }))
-                    }
-                  />
-                  <Button
-                    variant="destructive"
-                    disabled={!denyReason[registration.id]}
-                    onClick={() =>
-                      denyRegistration({
-                        id: registration.id,
-                        reason: denyReason[registration.id],
-                      })
-                    }
-                  >
-                    Deny
-                  </Button>
+                  <div className="flex flex-1 gap-2">
+                    <Input
+                      placeholder="Deny reason"
+                      value={denyReason[registration.id] ?? ""}
+                      onChange={(event) =>
+                        setDenyReason((current) => ({ ...current, [registration.id]: event.target.value }))
+                      }
+                    />
+                    <Button
+                      variant="destructive"
+                      disabled={!denyReason[registration.id]}
+                      onClick={() =>
+                        denyRegistration({
+                          id: registration.id,
+                          reason: denyReason[registration.id],
+                        })
+                      }
+                    >
+                      Deny
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
@@ -534,7 +536,7 @@ export function AdminRegistrationsPage() {
           </Select>
 
           {estateHouses?.map((house) => (
-            <div key={house.id} className="grid gap-3 rounded-lg border p-4 md:grid-cols-[1.7fr_1fr_auto_1fr_auto_auto]">
+            <div key={house.id} className="grid grid-cols-1 gap-3 rounded-lg border p-4 md:grid-cols-[1.7fr_1fr_auto_1fr_auto_auto]">
               <div>
                 <p className="font-semibold">{house.name}</p>
                 <p className="text-sm text-slate-600">{house.estate.name}</p>

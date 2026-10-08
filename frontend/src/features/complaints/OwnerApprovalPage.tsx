@@ -30,7 +30,7 @@ export function OwnerApprovalPage() {
             key={complaint.id}
             complaint={complaint}
             actions={
-              <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)_auto_auto]">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[220px_minmax(0,1fr)_auto_auto]">
                 <Input
                   type="number"
                   step="0.01"
@@ -48,38 +48,40 @@ export function OwnerApprovalPage() {
                   }
                   className="min-h-24"
                 />
-                <Button
-                  disabled={isLoading}
-                  className="h-fit"
-                  onClick={() =>
-                    review({
-                      id: complaint.id,
-                      body: {
-                        decision: "APPROVED",
-                        approvedCost: Number(costMap[complaint.id] || complaint.estimatedCost || 0),
-                        ownerNotes: noteMap[complaint.id],
-                      },
-                    })
-                  }
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="destructive"
-                  disabled={isLoading}
-                  className="h-fit"
-                  onClick={() =>
-                    review({
-                      id: complaint.id,
-                      body: {
-                        decision: "REJECTED",
-                        ownerNotes: noteMap[complaint.id] || "Returned to caretaker",
-                      },
-                    })
-                  }
-                >
-                  Return
-                </Button>
+                <div className="flex gap-2 w-full lg:w-auto">
+                  <Button
+                    disabled={isLoading}
+                    className="h-fit flex-1 lg:flex-initial"
+                    onClick={() =>
+                      review({
+                        id: complaint.id,
+                        body: {
+                          decision: "APPROVED",
+                          approvedCost: Number(costMap[complaint.id] || complaint.estimatedCost || 0),
+                          ownerNotes: noteMap[complaint.id],
+                        },
+                      })
+                    }
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={isLoading}
+                    className="h-fit flex-1 lg:flex-initial"
+                    onClick={() =>
+                      review({
+                        id: complaint.id,
+                        body: {
+                          decision: "REJECTED",
+                          ownerNotes: noteMap[complaint.id] || "Returned to caretaker",
+                        },
+                      })
+                    }
+                  >
+                    Return
+                  </Button>
+                </div>
               </div>
             }
           />

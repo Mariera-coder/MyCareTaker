@@ -43,26 +43,28 @@ function CollectionsChart({
 
   return (
     <div className="space-y-4">
-      <div className="flex h-72 items-end gap-2 rounded-3xl bg-[linear-gradient(180deg,#eff6ff_0%,#ffffff_60%)] p-4">
-        {data.map((item) => {
-          const height = maxValue === 0 ? 12 : Math.max((item.total_rent_collected / maxValue) * 100, 12);
-          const isSelected = item.month === selectedMonth;
+      <div className="overflow-x-auto pb-2">
+        <div className="flex h-72 min-w-[560px] md:min-w-0 items-end gap-2 rounded-3xl bg-[linear-gradient(180deg,#eff6ff_0%,#ffffff_60%)] p-4">
+          {data.map((item) => {
+            const height = maxValue === 0 ? 12 : Math.max((item.total_rent_collected / maxValue) * 100, 12);
+            const isSelected = item.month === selectedMonth;
 
-          return (
-            <div key={item.month} className="flex flex-1 flex-col items-center justify-end gap-3">
-              <span className={`text-center text-[11px] font-semibold ${isSelected ? "text-sky-700" : "text-slate-500"}`}>
-                {formatKes(item.total_rent_collected)}
-              </span>
-              <div
-                className={`w-full rounded-t-2xl transition-all ${
-                  isSelected ? "bg-[linear-gradient(180deg,#0f766e_0%,#0ea5e9_100%)]" : "bg-[linear-gradient(180deg,#94a3b8_0%,#cbd5e1_100%)]"
-                }`}
-                style={{ height: `${height}%` }}
-              />
-              <span className={`text-xs font-semibold ${isSelected ? "text-slate-900" : "text-slate-500"}`}>{item.month_label}</span>
-            </div>
-          );
-        })}
+            return (
+              <div key={item.month} className="flex flex-1 flex-col items-center justify-end gap-3">
+                <span className={`text-center text-[11px] font-semibold ${isSelected ? "text-sky-700" : "text-slate-500"}`}>
+                  {formatKes(item.total_rent_collected)}
+                </span>
+                <div
+                  className={`w-full rounded-t-2xl transition-all ${
+                    isSelected ? "bg-[linear-gradient(180deg,#0f766e_0%,#0ea5e9_100%)]" : "bg-[linear-gradient(180deg,#94a3b8_0%,#cbd5e1_100%)]"
+                  }`}
+                  style={{ height: `${height}%` }}
+                />
+                <span className={`text-xs font-semibold ${isSelected ? "text-slate-900" : "text-slate-500"}`}>{item.month_label}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
       <p className="text-sm text-slate-600">
         The highlighted bar is the month currently selected in the report filter.
@@ -146,7 +148,7 @@ export function MonthlyReportPage() {
           <CardHeader>
             <CardTitle>Report Period</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
+          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Month</Label>
               <Select value={month} onValueChange={setMonth}>
@@ -236,7 +238,7 @@ export function MonthlyReportPage() {
 
       {data ? (
         <>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-4">
             <StatCard title="Total Rent Collected" value={formatKes(data.total_rent_collected)} backgroundColor="bg-[#0f766e]" />
             <StatCard title="Complaint Deductions" value={formatKes(data.complaint_deductions_total)} backgroundColor="bg-[#b45309]" />
             <StatCard title="Caretaker Salary Paid" value={formatKes(data.caretaker_salary_deduction)} backgroundColor="bg-[#475569]" />
@@ -285,7 +287,8 @@ export function MonthlyReportPage() {
               <CardTitle>Monthly Stats Table</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
+              <div className="w-full overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Month</TableHead>
@@ -309,14 +312,15 @@ export function MonthlyReportPage() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
+                </div>
+              </CardContent>
           </Card>
 
           <Card className="rounded-2xl border-slate-200">
             <CardHeader>
               <CardTitle>Selected Month Breakdown</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-3">
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Complaint Deductions</p>
                 <p className="mt-2 text-2xl font-bold text-slate-900">{formatKes(data.complaint_deductions_total)}</p>
@@ -337,7 +341,8 @@ export function MonthlyReportPage() {
               <CardTitle>Caretaker Salary Records</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
+              <div className="w-full overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Paid At</TableHead>
@@ -367,7 +372,8 @@ export function MonthlyReportPage() {
                   )}
                 </TableBody>
               </Table>
-            </CardContent>
+                </div>
+              </CardContent>
           </Card>
 
           <Card className="rounded-2xl border-slate-200">
@@ -375,7 +381,8 @@ export function MonthlyReportPage() {
               <CardTitle>Per-Unit Breakdown</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
+              <div className="w-full overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Unit</TableHead>
@@ -428,7 +435,8 @@ export function MonthlyReportPage() {
                   )}
                 </TableBody>
               </Table>
-            </CardContent>
+                </div>
+              </CardContent>
           </Card>
         </>
       ) : null}

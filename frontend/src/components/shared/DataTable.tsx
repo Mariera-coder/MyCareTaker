@@ -17,7 +17,7 @@ interface DataTableProps<T> {
 
 export function DataTable<T>({ columns, rows, footer }: DataTableProps<T>) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
       <Table>
         <TableHeader className="bg-[#1b3a5c]">
           <TableRow className="border-none hover:bg-transparent">

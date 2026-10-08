@@ -21,7 +21,7 @@ const formatKes = (value: number) => `KES ${value.toLocaleString()}`;
 function DashboardHeader({ title, estateName }: { title: string; estateName?: string | null }) {
   return (
     <div className="space-y-1">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
         {title}
         {estateName ? ` · ${estateName}` : ""}
       </h1>
@@ -93,7 +93,7 @@ export function DashboardPage() {
       <div className="space-y-6">
         <DashboardHeader title="Tenant Dashboard" estateName={dashboard.tenancy.estate.name} />
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <StatCard
             title="Total Due This Month"
             value={formatKes(dashboard.summary.monthlyRentDue)}
@@ -141,7 +141,7 @@ export function DashboardPage() {
         ) : null}
 
         <div className="space-y-3">
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="outline" type="button">Export CSV</Button>
             <Button variant="outline" type="button">Send & Notify</Button>
           </div>
@@ -149,16 +149,20 @@ export function DashboardPage() {
             columns={[
               { key: "month", header: "Month", render: (row) => row.monthYear },
               { key: "rent", header: "Base Rent (KES)", render: (row) => formatKes(row.baseRent) },
-              { key: "deposit", header: "Deposit (KES)", render: (row) => formatKes(row.securityDepositCharged) },
               {
-                key: "deposit-status",
-                header: "Deposit Status",
+                key: "deposit",
+                header: "Deposit (KES)",
                 render: (row) =>
-                  row.securityDepositCharged > 0 ? (
-                    <Badge variant={dashboard.summary.depositSettled ? "success" : "warning"}>
-                      {dashboard.summary.depositSettled ? "Paid" : "Pending"}
-                    </Badge>
-                  ) : "-",
+                  (
+                    <div className="flex flex-col items-start gap-1">
+                      <span>{formatKes(row.securityDepositCharged)}</span>
+                      {row.securityDepositCharged > 0 ? (
+                        <Badge variant={dashboard.summary.depositSettled ? "success" : "warning"}>
+                          {dashboard.summary.depositSettled ? "Paid" : "Pending"}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  ),
               },
               {
                 key: "carry",
@@ -196,12 +200,12 @@ export function DashboardPage() {
           <CardHeader>
             <CardTitle>Rent Budget Planner</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-4">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-4">
             {dashboard.planner.map((week) => (
               <div key={week.weekNumber} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <p className="text-sm font-semibold text-slate-900">Week {week.weekNumber}</p>
                 <p className="mt-2 text-sm text-slate-600">Target {formatKes(week.targetAmount)}</p>
-                <p className="text-sm text-slate-600">Confirmed {formatKes(week.confirmedPaid)}</p>
+                <p className="mt-2 text-sm text-slate-600">Confirmed {formatKes(week.confirmedPaid)}</p>
                 <p className="text-sm text-slate-600">Remaining {formatKes(week.remaining)}</p>
                 <div className="mt-3 h-2 rounded-full bg-slate-200">
                   <div className="h-2 rounded-full bg-sky-600" style={{ width: `${week.progress}%` }} />
@@ -226,7 +230,7 @@ export function DashboardPage() {
             <CardTitle>Make Payment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-slate-700">Option A</p>
                 <Input
@@ -289,7 +293,7 @@ export function DashboardPage() {
           estateName={selectedEstate?.name}
         />
 
-        <div className="grid gap-4 md:grid-cols-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-5">
           <StatCard
             title="Total Units"
             value={String(dashboard.stats.occupiedUnits + dashboard.stats.vacantUnits)}
@@ -316,7 +320,7 @@ export function DashboardPage() {
         )}
 
         <div className="space-y-3">
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="outline" type="button">Export CSV</Button>
             <Button variant="outline" type="button">Send & Notify</Button>
           </div>
@@ -329,16 +333,20 @@ export function DashboardPage() {
                 render: (row) => (row.tenantName === "Vacant" ? <Badge variant="destructive">Vacant</Badge> : row.tenantName),
               },
               { key: "rent", header: "Base Rent (KES)", render: (row) => formatKes(row.monthlyRent) },
-              { key: "deposit", header: "Deposit (KES)", render: (row) => formatKes(row.securityDepositCharged) },
               {
-                key: "deposit-status",
-                header: "Deposit Status",
+                key: "deposit",
+                header: "Deposit (KES)",
                 render: (row) =>
-                  row.securityDepositAmount > 0 ? (
-                    <Badge variant={row.depositSettled ? "success" : "warning"}>
-                      {row.depositSettled ? "Paid" : "Pending"}
-                    </Badge>
-                  ) : "-",
+                  (
+                    <div className="flex flex-col items-start gap-1">
+                      <span>{formatKes(row.securityDepositCharged)}</span>
+                      {row.securityDepositAmount > 0 ? (
+                        <Badge variant={row.depositSettled ? "success" : "warning"}>
+                          {row.depositSettled ? "Paid" : "Pending"}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  ),
               },
               {
                 key: "carry",
@@ -364,7 +372,7 @@ export function DashboardPage() {
             ]}
             rows={dashboard.rows}
             footer={
-              <div className="grid gap-2 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                 <span>Total Expected: {formatKes(dashboard.stats.totalRentExpected)}</span>
                 <span>Total Collected: {formatKes(dashboard.stats.totalCollected)}</span>
                 <span>Total Deficit: {formatKes(dashboard.stats.totalDeficit)}</span>
@@ -378,7 +386,7 @@ export function DashboardPage() {
             <CardTitle>Monthly Reports</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-xl bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Collected</p>
                 <p className="mt-2 text-2xl font-bold text-slate-900">{formatKes(report?.total_rent_collected ?? 0)}</p>
@@ -392,14 +400,14 @@ export function DashboardPage() {
                 <p className="mt-2 text-2xl font-bold text-slate-900">{formatKes(report?.net_owner_payout ?? 0)}</p>
               </div>
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4">
               <div className="space-y-1">
                 <p className="font-medium text-slate-900">Open the full monthly report workspace</p>
                 <p className="text-sm text-slate-600">
                   Complaints in queue: {complaints.data?.length ?? 0}. This is the best place to expand month-by-month reporting next.
                 </p>
               </div>
-              <Button asChild>
+              <Button asChild className="w-full sm:w-auto">
                 <Link to="/reports/monthly">Open Reports</Link>
               </Button>
             </div>
